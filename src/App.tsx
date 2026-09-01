@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Avatar2D } from './components/Avatar2D';
+import { PersonaAvatar } from './avatar/PersonaAvatar';
+import type { VrmValidationReport } from './avatar/avatarTypes';
 import { ManualControls } from './components/ManualControls';
-import { MicControl } from './components/MicControl';
 import { registerWebMcpTools } from './webmcp/registerTools';
-import { speakUtterance, stopSpeech } from './utils/speech';
+import { voiceEngine } from './voice';
 import { isSpeechRecognitionSupported, SpeechRecognizer } from './utils/stt';
-import type { DemoState, Emotion } from './types/persona';
+import { PERSONAS, getPersonaById, type PersonaConfig } from './config/personas';
+import type { DemoState, Emotion, ThemeMode } from './types/persona';
 import './App.css';
 
 export default function App() {
@@ -22,12 +23,75 @@ export default function App() {
     interimTranscript: '',
     isListening: false,
     micError: null,
+    activePersonaId: 'technical-interview',
+    selectedPersonaId: 'technical-interview',
+    theme: (localStorage.getItem('persona_theme') as ThemeMode) || 'light',
   });
+
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [isPersonasDrawerOpen, setIsPersonasDrawerOpen] = useState(false);
+  const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
   const [speechWarning, setSpeechWarning] = useState<string | null>(null);
+  const [vrmReport, setVrmReport] = useState<VrmValidationReport | null>(null);
+  
+  const gesturePlayRef = useRef<((name: string) => void) | null>(null);
+  const cameraApiRef   = useRef<{ set: (c: object) => void; get: () => object } | null>(null);
+  const lightingApiRef = useRef<{ set: (c: object) => void; get: () => object } | null>(null);
+  const avatarApiRef   = useRef<{ set: (c: object) => void; get: () => object } | null>(null);
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  const selectedPersona = getPersonaById(state.selectedPersonaId);
+
+  // Theme Toggle
+  const toggleTheme = () => {
+    setState((prev) => {
+      const nextTheme: ThemeMode = prev.theme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('persona_theme', nextTheme);
+      return { ...prev, theme: nextTheme };
+    });
+  };
+
+  // Drawer Mutual Exclusion Handlers
+  const togglePersonasDrawer = () => {
+    setIsPersonasDrawerOpen((prev) => {
+      const next = !prev;
+      if (next) setIsAgentDrawerOpen(false);
+      return next;
+    });
+  };
+
+  const toggleAgentDrawer = () => {
+    setIsAgentDrawerOpen((prev) => {
+      const next = !prev;
+      if (next) setIsPersonasDrawerOpen(false);
+      return next;
+    });
+  };
+
+  const handleCloseDrawers = () => {
+    if (isPersonasDrawerOpen) setIsPersonasDrawerOpen(false);
+    if (isAgentDrawerOpen) setIsAgentDrawerOpen(false);
+  };
+
+  const handleSelectPersona = (persona: PersonaConfig) => {
+    if (persona.status === 'available') {
+      setState((prev) => ({
+        ...prev,
+        activePersonaId: persona.id,
+        selectedPersonaId: persona.id,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        selectedPersonaId: persona.id,
+      }));
+    }
+    // Close drawer & return focus to main character
+    setIsPersonasDrawerOpen(false);
+  };
 
   const handleToggleListening = useCallback(() => {
     setState((prev) => {
@@ -113,7 +177,6 @@ export default function App() {
   }, []);
 
   const handleSpeak = useCallback((text: string, emotion: Emotion, source: 'WebMCP' | 'Manual' = 'WebMCP') => {
-    // Stop active microphone recognition to prevent Persona's audio from being captured as input
     if (recognizerRef.current) {
       recognizerRef.current.stop();
     }
@@ -132,19 +195,19 @@ export default function App() {
       },
     }));
 
-    const success = speakUtterance(
+    const success = voiceEngine.speak({
       text,
       emotion,
-      () => {
+      onStart: () => {
         setState((prev) => ({ ...prev, status: 'speaking', isListening: false }));
       },
-      () => {
+      onEnd: () => {
         setState((prev) => ({ ...prev, status: 'idle' }));
       },
-      () => {
+      onError: () => {
         setState((prev) => ({ ...prev, status: 'idle' }));
-      }
-    );
+      },
+    });
 
     if (!success) {
       setSpeechWarning('Speech synthesis unavailable in this browser.');
@@ -157,16 +220,21 @@ export default function App() {
   }, []);
 
   const handleResetIdle = () => {
-    stopSpeech();
+    voiceEngine.stop();
     setState((prev) => ({
       ...prev,
       status: 'idle',
     }));
   };
 
+  const handleSetActivity = useCallback((status: import('./types/persona').AvatarStatus) => {
+    voiceEngine.stop();
+    setState((prev) => ({ ...prev, status }));
+  }, []);
+
   useEffect(() => {
     return () => {
-      stopSpeech();
+      voiceEngine.stop();
       if (recognizerRef.current) {
         recognizerRef.current.stop();
       }
@@ -205,100 +273,339 @@ export default function App() {
   }, [handleSpeak]);
 
   return (
-    <div className="app-shell">
-      {/* Top Header */}
-      <header className="app-header">
-        <div className="header-brand">
-          <span className="brand-logo">🎭</span>
-          <div className="brand-titles">
-            <h1 className="brand-title">Persona</h1>
-            <span className="brand-subtitle">WebMCP Connection Test</span>
-          </div>
-        </div>
-
-        {/* WebMCP Connection Status Banner */}
+    <div className="persona-app-container" data-theme={state.theme}>
+      {/* DYNAMIC PERSONA BACKGROUND OVERLAY */}
+      {selectedPersona.bgUrl && (
         <div
-          className={`webmcp-status-banner ${
-            state.webMcpRegistered
-              ? 'status-registered'
-              : state.webMcpAvailable
-              ? 'status-available'
-              : 'status-unavailable'
-          }`}
-        >
-          <span className="status-dot">●</span>
-          {state.webMcpRegistered
-            ? 'WebMCP Tools "speak" & "get_user_transcript" Registered'
-            : state.webMcpAvailable
-            ? 'WebMCP API Detected'
-            : 'WebMCP unavailable in this browser (Manual mode active)'}
+          className="persona-bg-layer"
+          style={{ backgroundImage: `url(${selectedPersona.bgUrl})` }}
+        />
+      )}
+
+      {/* TOP HEADER — GLASSMORPHIC BAR */}
+      <header className="persona-header glassmorphic-bar">
+        <div className="header-brand-left">
+          <img src="/persona.png" alt="Persona Logo" className="brand-logo-img" />
+          <div className="brand-text-group">
+            <h1 className="brand-wordmark">PERSONA</h1>
+            <span className="brand-subtext">EMBODIED AGENT</span>
+          </div>
         </div>
 
-        {speechWarning && (
-          <div className="speech-warning-banner">
-            ⚠️ {speechWarning}
+        <div className="header-controls-right">
+          {/* DARK MODE TOGGLE */}
+          <button
+            type="button"
+            className="btn-theme-toggle"
+            onClick={toggleTheme}
+            title="Toggle Light / Dark Mode"
+          >
+            <span className="theme-icon">{state.theme === 'light' ? '🌙' : '☀️'}</span>
+            <span className="theme-text">{state.theme === 'light' ? 'DARK MODE' : 'LIGHT MODE'}</span>
+          </button>
+
+          <div className={`connection-pill ${state.webMcpRegistered ? 'is-connected' : 'is-offline'}`}>
+            <span className="status-dot">●</span>
+            <span className="status-text">{state.webMcpRegistered ? 'PERSONA • CONNECTED' : 'PERSONA • OFFLINE'}</span>
+            <span className="agent-badge">● AGENT</span>
           </div>
-        )}
+        </div>
       </header>
 
-      <main className="app-main">
-        {/* Central Display Container */}
-        <div className="avatar-stage-card">
-          {/* Avatar Graphic */}
-          <Avatar2D status={state.status} emotion={state.emotion} />
+      {speechWarning && (
+        <div className="speech-warning-banner">
+          ⚠️ {speechWarning}
+        </div>
+      )}
 
-          {/* Dialogue Speech Box */}
-          <div className="dialogue-box">
-            <div className="dialogue-label">Spoken Dialogue:</div>
-            <p className="dialogue-text">"{state.dialogue}"</p>
+      {/* MAIN WORKSPACE & CENTER STAGE */}
+      <main className="persona-workspace">
+        {/* BACKDROP FOR CLICK-OUTSIDE TO CLOSE DRAWERS */}
+        {(isPersonasDrawerOpen || isAgentDrawerOpen) && (
+          <div className="drawers-backdrop" onClick={handleCloseDrawers} />
+        )}
+
+        {/* LEFT COLLAPSIBLE SIDE DRAWER — PERSONAS */}
+        <aside className={`side-drawer left-drawer ${isPersonasDrawerOpen ? 'is-expanded' : 'is-collapsed'}`}>
+          {/* Collapsed Flap / Edge Tab */}
+          {!isPersonasDrawerOpen && (
+            <button
+              type="button"
+              className="drawer-edge-tab left-tab"
+              onClick={togglePersonasDrawer}
+              title="Open Personas"
+            >
+              <span className="tab-label">PERSONAS</span>
+              <span className="tab-chevron">▶</span>
+            </button>
+          )}
+
+          {/* Expanded Content */}
+          <div className="drawer-inner-panel">
+            <div className="drawer-header-bar">
+              <h2 className="panel-title-tag">PERSONAS</h2>
+              <button
+                type="button"
+                className="drawer-close-btn"
+                onClick={() => setIsPersonasDrawerOpen(false)}
+                title="Collapse Personas panel"
+              >
+                ◀
+              </button>
+            </div>
+
+            <div className="personas-list-container">
+              <div className="persona-section-group">
+                <span className="persona-group-label">AVAILABLE</span>
+                {PERSONAS.filter(p => p.status === 'available').map((p) => {
+                  const isSelected = p.id === state.selectedPersonaId;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`persona-item-btn ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => handleSelectPersona(p)}
+                    >
+                      <div className="item-left">
+                        <span className="item-bullet">▶</span>
+                        <div className="item-text-stack">
+                          <span className="item-mode">{p.mode}</span>
+                          {p.subtitle && <span className="item-sub">{p.subtitle}</span>}
+                        </div>
+                      </div>
+                      {isSelected && <span className="item-active-pill">ACTIVE</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="persona-section-group">
+                <span className="persona-group-label">COMING SOON</span>
+                {PERSONAS.filter(p => p.status === 'coming-soon').map((p) => {
+                  const isSelected = p.id === state.selectedPersonaId;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`persona-item-btn is-coming-soon ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => handleSelectPersona(p)}
+                    >
+                      <div className="item-left">
+                        <span className="item-bullet">○</span>
+                        <span className="item-mode">{p.mode}</span>
+                      </div>
+                      <span className="badge-coming-soon">SOON</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* CENTER — PERSONA HERO STAGE (DOMINANT AVATAR FOCUS) */}
+        <section className="workspace-center-stage">
+          <div className="expression-header-badge">
+            EXPRESSION: {state.emotion.toUpperCase()}
           </div>
 
-          {/* Last Tool Invocation Logger */}
-          <div className="action-log-box">
-            <div className="action-log-header">
-              <span className="log-title">Last WebMCP Action</span>
-              {state.lastToolCall && (
-                <span className="log-time">{state.lastToolCall.timestamp}</span>
-              )}
-            </div>
-            {state.lastToolCall ? (
-              <div className="log-details">
-                <div className="log-tool-name">{state.lastToolCall.tool}</div>
-                <pre className="log-json">
-                  {JSON.stringify(state.lastToolCall.args, null, 2)}
-                </pre>
-              </div>
+          <div className="persona-avatar-hero-container">
+            {selectedPersona.modelUrl ? (
+              <PersonaAvatar
+                key={selectedPersona.modelUrl}
+                modelUrl={selectedPersona.modelUrl}
+                status={state.status}
+                emotion={state.emotion}
+                onValidationReport={setVrmReport}
+                onGestureRef={(fn) => { gesturePlayRef.current = fn; }}
+                onCameraRef={(api) => { cameraApiRef.current = api as typeof cameraApiRef.current; }}
+                onLightingRef={(api) => { lightingApiRef.current = api as typeof lightingApiRef.current; }}
+                onAvatarRef={(api) => { avatarApiRef.current = api as typeof avatarApiRef.current; }}
+              />
             ) : (
-              <div className="log-empty">No tool invocations recorded yet.</div>
+              <div className="persona-coming-soon-hero">
+                <div className="coming-soon-hero-badge">COMING SOON</div>
+                <h2 className="coming-soon-hero-title">{selectedPersona.mode}</h2>
+                <div className="coming-soon-hero-subtitle">{selectedPersona.name}</div>
+                <p className="coming-soon-hero-desc">{selectedPersona.description}</p>
+                <div className="coming-soon-hero-card-footer">
+                  🎭 3D Avatar Model & Persona Mode Coming Soon
+                </div>
+              </div>
+            )}
+
+            {/* CHAT RESPONSE BUBBLE (SHOWS ONLY WHEN AGENT TALKS, RESPONSIVELY POSITIONED) */}
+            {state.status === 'speaking' && (
+              <div className="persona-response-bubble">
+                <div className="bubble-arrow-left" />
+                <div className="bubble-tag-header">PERSONA / SPEAKING</div>
+                <p className="bubble-text-content">"{state.dialogue}"</p>
+              </div>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Development Manual Test Control Panel */}
-        <ManualControls
-          onManualSpeak={(text, emotion) => handleSpeak(text, emotion, 'Manual')}
-          onResetIdle={handleResetIdle}
-          currentEmotion={state.emotion}
-        />
+        {/* RIGHT COLLAPSIBLE SIDE DRAWER — AGENT CAPABILITIES */}
+        <aside className={`side-drawer right-drawer ${isAgentDrawerOpen ? 'is-expanded' : 'is-collapsed'}`}>
+          {/* Collapsed Flap / Edge Tab */}
+          {!isAgentDrawerOpen && (
+            <button
+              type="button"
+              className="drawer-edge-tab right-tab"
+              onClick={toggleAgentDrawer}
+              title="Open Agent Capabilities"
+            >
+              <span className="tab-chevron">◀</span>
+              <span className="tab-label">TOOLS</span>
+            </button>
+          )}
 
-        {/* Human Microphone & Speech Recognition Panel */}
-        <MicControl
-          isListening={state.isListening}
-          userTranscript={state.userTranscript}
-          pendingUserUtterance={state.pendingUserUtterance}
-          utteranceId={state.utteranceId}
-          interimTranscript={state.interimTranscript}
-          micError={state.micError}
-          supported={isSpeechRecognitionSupported()}
-          onToggleListening={handleToggleListening}
-          onClearTranscript={handleClearTranscript}
-        />
+          {/* Expanded Content */}
+          <div className="drawer-inner-panel">
+            <div className="drawer-header-bar">
+              <h2 className="panel-title-tag">AGENT CAPABILITIES</h2>
+              <button
+                type="button"
+                className="drawer-close-btn"
+                onClick={() => setIsAgentDrawerOpen(false)}
+                title="Collapse Agent Capabilities panel"
+              >
+                ▶
+              </button>
+            </div>
+
+            <div className="drawer-scroll-body">
+              <div className="capabilities-stack">
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">speak()</span>
+                    {state.lastToolCall?.tool.includes('speak') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Make Persona speak with audio and emotion.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">get_user_transcript()</span>
+                    {state.lastToolCall?.tool.includes('get_user_transcript') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Read latest human speech utterance.</p>
+                </div>
+              </div>
+
+              <div className="panel-card-mini agent-activity-block">
+                <h2 className="panel-title-tag">AGENT ACTIVITY</h2>
+                <div className="activity-feed">
+                  {state.lastToolCall ? (
+                    <div className="activity-item">
+                      <span className="activity-time">{state.lastToolCall.timestamp}</span>
+                      <div className="activity-tool-name">{state.lastToolCall.tool}</div>
+                    </div>
+                  ) : (
+                    <div className="activity-placeholder">
+                      Awaiting tool invocation...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
       </main>
 
-      <footer className="app-footer">
-        <span>Persona WebMCP Proof of Concept — Phase 3B</span>
+      {/* BOTTOM FOOTER — GLASSMORPHIC BAR */}
+      <footer className="persona-footer glassmorphic-bar">
+        <div className="footer-left-group">
+          <button
+            type="button"
+            className="btn-settings-toggle"
+            onClick={() => setIsManualOpen(!isManualOpen)}
+            title="Settings & Avatar Calibration"
+          >
+            <span className="gear-icon">⚙</span>
+            <span className="settings-text">Settings & Tuning</span>
+          </button>
+
+          {/* INLINE MICROPHONE TOGGLE FOR QUICK ACCESS */}
+          <button
+            type="button"
+            className={`btn-mic-footer ${state.isListening ? 'is-active' : ''}`}
+            onClick={handleToggleListening}
+            title={state.isListening ? 'Stop listening' : 'Start speech recognition'}
+          >
+            {state.isListening ? '🔴 LISTENING...' : '🎙 START LISTENING'}
+          </button>
+
+          {/* USER SPEECH TRANSCRIPT DISPLAY */}
+          {(state.userTranscript || state.interimTranscript || state.isListening) && (
+            <div className="footer-transcript-pill">
+              <span className="transcript-live-dot">
+                {state.isListening ? '🔴 LIVE:' : '🎙️ USER:'}
+              </span>
+              <span className="transcript-text">
+                "{state.interimTranscript || state.userTranscript}"
+              </span>
+              {state.pendingUserUtterance && (
+                <span className="pending-utterance-badge">PENDING</span>
+              )}
+              {state.userTranscript && (
+                <button
+                  type="button"
+                  className="btn-clear-transcript-mini"
+                  onClick={handleClearTranscript}
+                  title="Clear transcript"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="footer-turn-status">
+          <span className="live-status-dot">
+            {state.status === 'speaking'
+              ? '● SPEAKING'
+              : state.status === 'listening'
+              ? '🔴 LISTENING'
+              : state.status === 'user_finished'
+              ? '✓ USER FINISHED'
+              : state.status === 'agent_processing'
+              ? '⚙ AGENT THINKING'
+              : '● IDLE'}
+          </span>
+        </div>
       </footer>
+
+      {/* TUNING & DEV CONTROLS DRAWER MODAL */}
+      {isManualOpen && (
+        <div className="mc-drawer-overlay" onClick={() => setIsManualOpen(false)}>
+          <div className="mc-drawer" onClick={e => e.stopPropagation()}>
+            <div className="mc-drawer-header">
+              <span>⚙ AVATAR TUNING & DEV CONTROLS</span>
+              <button type="button" className="mc-drawer-close" onClick={() => setIsManualOpen(false)}>×</button>
+            </div>
+            <div className="mc-drawer-body">
+              <ManualControls
+                onManualSpeak={(text, emotion) => handleSpeak(text, emotion, 'Manual')}
+                onResetIdle={handleResetIdle}
+                onSetActivity={handleSetActivity}
+                onPlayGesture={(name) => gesturePlayRef.current?.(name)}
+                currentEmotion={state.emotion}
+                currentStatus={state.status}
+                vrmReport={vrmReport}
+                cameraApi={cameraApiRef.current as Parameters<typeof ManualControls>[0]['cameraApi']}
+                lightingApi={lightingApiRef.current as Parameters<typeof ManualControls>[0]['lightingApi']}
+                avatarApi={avatarApiRef.current as Parameters<typeof ManualControls>[0]['avatarApi']}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

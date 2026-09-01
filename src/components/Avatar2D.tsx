@@ -9,221 +9,201 @@ interface Avatar2DProps {
 export const Avatar2D: React.FC<Avatar2DProps> = ({ status, emotion }) => {
   const isSpeaking = status === 'speaking';
 
-  // Theme & accent colors per emotion
-  const emotionThemeMap: Record<
-    Emotion,
-    { bg: string; border: string; glow: string; label: string; badgeClass: string }
-  > = {
-    neutral: {
-      bg: '#1f2430',
-      border: '#3b4252',
-      glow: 'rgba(94, 129, 172, 0.25)',
-      label: 'NEUTRAL',
-      badgeClass: 'badge-neutral',
-    },
-    warm: {
-      bg: '#251e2b',
-      border: '#b48ead',
-      glow: 'rgba(180, 142, 173, 0.3)',
-      label: 'WARM',
-      badgeClass: 'badge-warm',
-    },
-    skeptical: {
-      bg: '#2b261e',
-      border: '#ebcb8b',
-      glow: 'rgba(235, 203, 139, 0.3)',
-      label: 'SKEPTICAL',
-      badgeClass: 'badge-skeptical',
-    },
-    impressed: {
-      bg: '#1e2b27',
-      border: '#a3be8c',
-      glow: 'rgba(163, 190, 140, 0.35)',
-      label: 'IMPRESSED',
-      badgeClass: 'badge-impressed',
-    },
-    stern: {
-      bg: '#2d1d24',
-      border: '#bf616a',
-      glow: 'rgba(191, 97, 106, 0.35)',
-      label: 'STERN',
-      badgeClass: 'badge-stern',
-    },
+  const emotionLabelMap: Record<Emotion, { label: string; badgeBg: string; textColor: string }> = {
+    neutral: { label: 'NEUTRAL', badgeBg: '#F4F4F4', textColor: '#191817' },
+    warm: { label: 'WARM', badgeBg: '#E8F2FF', textColor: '#0F62FE' },
+    skeptical: { label: 'SKEPTICAL', badgeBg: '#FFF3E0', textColor: '#D97706' },
+    impressed: { label: 'IMPRESSED', badgeBg: '#E6F4EA', textColor: '#137333' },
+    stern: { label: 'STERN', badgeBg: '#FCE8E6', textColor: '#C5221F' },
   };
 
-  const theme = emotionThemeMap[emotion] || emotionThemeMap.neutral;
+  const currentEmotion = emotionLabelMap[emotion] || emotionLabelMap.neutral;
 
-  // Eyebrow SVG paths per emotion
+  // Dynamic Eyebrows
   const getEyebrows = () => {
     switch (emotion) {
       case 'warm':
         return (
-          <>
-            <path d="M 65 85 Q 80 75 95 85" stroke="#eceff4" strokeWidth="4" strokeLinecap="round" fill="none" />
-            <path d="M 105 85 Q 120 75 135 85" stroke="#eceff4" strokeWidth="4" strokeLinecap="round" fill="none" />
-          </>
+          <g className="eyebrows-group">
+            <path d="M 68 76 Q 84 66 98 75" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+            <path d="M 102 75 Q 116 66 132 76" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+          </g>
         );
       case 'skeptical':
         return (
-          <>
-            {/* Left eyebrow raised high */}
-            <path d="M 62 70 Q 80 65 95 78" stroke="#ebcb8b" strokeWidth="4.5" strokeLinecap="round" fill="none" />
-            {/* Right eyebrow flat / lowered */}
-            <path d="M 105 85 Q 120 88 138 84" stroke="#ebcb8b" strokeWidth="4" strokeLinecap="round" fill="none" />
-          </>
+          <g className="eyebrows-group">
+            {/* Left raised */}
+            <path d="M 66 64 Q 84 56 98 70" stroke="#191817" strokeWidth="4" strokeLinecap="round" fill="none" />
+            {/* Right lowered */}
+            <path d="M 102 78 Q 116 80 134 77" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+          </g>
         );
       case 'impressed':
         return (
-          <>
-            <path d="M 62 72 Q 80 60 98 72" stroke="#a3be8c" strokeWidth="4" strokeLinecap="round" fill="none" />
-            <path d="M 102 72 Q 120 60 138 72" stroke="#a3be8c" strokeWidth="4" strokeLinecap="round" fill="none" />
-          </>
+          <g className="eyebrows-group">
+            <path d="M 66 66 Q 84 54 100 66" stroke="#0F62FE" strokeWidth="4" strokeLinecap="round" fill="none" />
+            <path d="M 100 66 Q 116 54 134 66" stroke="#0F62FE" strokeWidth="4" strokeLinecap="round" fill="none" />
+          </g>
         );
       case 'stern':
         return (
-          <>
-            {/* Furrowed angled eyebrows */}
-            <path d="M 62 78 L 96 90" stroke="#bf616a" strokeWidth="5" strokeLinecap="round" />
-            <path d="M 104 90 L 138 78" stroke="#bf616a" strokeWidth="5" strokeLinecap="round" />
-          </>
+          <g className="eyebrows-group">
+            <path d="M 66 74 L 98 84" stroke="#191817" strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M 102 84 L 134 74" stroke="#191817" strokeWidth="4.5" strokeLinecap="round" />
+          </g>
         );
       case 'neutral':
       default:
         return (
-          <>
-            <line x1="65" y1="82" x2="95" y2="82" stroke="#eceff4" strokeWidth="4" strokeLinecap="round" />
-            <line x1="105" y1="82" x2="135" y2="82" stroke="#eceff4" strokeWidth="4" strokeLinecap="round" />
-          </>
+          <g className="eyebrows-group">
+            <path d="M 68 74 Q 84 72 98 74" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+            <path d="M 102 74 Q 116 72 132 74" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+          </g>
         );
     }
   };
 
-  // Eyes SVG paths per emotion
+  // Expressive Almond Eyes with Pupil Highlights
   const getEyes = () => {
     switch (emotion) {
       case 'warm':
         return (
-          <>
-            <path d="M 70 102 Q 80 94 90 102" stroke="#eceff4" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-            <path d="M 110 102 Q 120 94 130 102" stroke="#eceff4" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-            {/* Cheeks blush */}
-            <ellipse cx="64" cy="115" rx="8" ry="4" fill="rgba(180, 142, 173, 0.4)" />
-            <ellipse cx="136" cy="115" rx="8" ry="4" fill="rgba(180, 142, 173, 0.4)" />
-          </>
+          <g className="eyes-group">
+            {/* Smiling eyes arcs */}
+            <path d="M 70 92 Q 83 82 96 92" stroke="#191817" strokeWidth="4" strokeLinecap="round" fill="none" />
+            <path d="M 104 92 Q 117 82 130 92" stroke="#191817" strokeWidth="4" strokeLinecap="round" fill="none" />
+            {/* Cheek blushes */}
+            <ellipse cx="66" cy="106" rx="9" ry="4" fill="rgba(15, 98, 254, 0.12)" />
+            <ellipse cx="134" cy="106" rx="9" ry="4" fill="rgba(15, 98, 254, 0.12)" />
+          </g>
         );
       case 'skeptical':
         return (
-          <>
+          <g className="eyes-group">
             {/* Left eye wide */}
-            <circle cx="80" cy="100" r="7" fill="#eceff4" />
-            <circle cx="81" cy="99" r="2.5" fill="#2e3440" />
+            <path d="M 70 92 Q 83 80 96 92 Q 83 100 70 92 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="83" cy="90" r="5" fill="#0F62FE" />
+            <circle cx="83" cy="90" r="2.5" fill="#191817" />
+            <circle cx="81" cy="88" r="1.2" fill="#FFFFFF" />
             {/* Right eye squinting */}
-            <line x1="110" y1="100" x2="130" y2="100" stroke="#ebcb8b" strokeWidth="3.5" strokeLinecap="round" />
-          </>
+            <line x1="104" y1="92" x2="130" y2="92" stroke="#191817" strokeWidth="4" strokeLinecap="round" />
+          </g>
         );
       case 'impressed':
         return (
-          <>
-            <circle cx="80" cy="98" r="8.5" fill="#eceff4" />
-            <circle cx="80" cy="98" r="4" fill="#1e2b27" />
-            <circle cx="78" cy="96" r="1.8" fill="#ffffff" />
-            <circle cx="120" cy="98" r="8.5" fill="#eceff4" />
-            <circle cx="120" cy="98" r="4" fill="#1e2b27" />
-            <circle cx="118" cy="96" r="1.8" fill="#ffffff" />
-          </>
+          <g className="eyes-group">
+            <path d="M 68 91 Q 83 78 98 91 Q 83 102 68 91 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="83" cy="90" r="6" fill="#0F62FE" />
+            <circle cx="83" cy="90" r="3" fill="#191817" />
+            <circle cx="80" cy="87" r="1.5" fill="#FFFFFF" />
+            
+            <path d="M 102 91 Q 117 78 132 91 Q 117 102 102 91 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="117" cy="90" r="6" fill="#0F62FE" />
+            <circle cx="117" cy="90" r="3" fill="#191817" />
+            <circle cx="114" cy="87" r="1.5" fill="#FFFFFF" />
+          </g>
         );
       case 'stern':
         return (
-          <>
-            <circle cx="80" cy="102" r="6.5" fill="#eceff4" />
-            <circle cx="80" cy="102" r="3" fill="#bf616a" />
-            <circle cx="120" cy="102" r="6.5" fill="#eceff4" />
-            <circle cx="120" cy="102" r="3" fill="#bf616a" />
-          </>
+          <g className="eyes-group">
+            <path d="M 70 94 Q 83 86 96 94 Q 83 102 70 94 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="83" cy="94" r="4.5" fill="#C5221F" />
+            <circle cx="83" cy="94" r="2" fill="#191817" />
+            
+            <path d="M 104 94 Q 117 86 130 94 Q 117 102 104 94 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="117" cy="94" r="4.5" fill="#C5221F" />
+            <circle cx="117" cy="94" r="2" fill="#191817" />
+          </g>
         );
       case 'neutral':
       default:
         return (
-          <>
-            <circle cx="80" cy="100" r="6.5" fill="#eceff4" />
-            <circle cx="80" cy="100" r="3" fill="#2e3440" />
-            <circle cx="120" cy="100" r="6.5" fill="#eceff4" />
-            <circle cx="120" cy="100" r="3" fill="#2e3440" />
-          </>
+          <g className="eyes-group">
+            <path d="M 70 92 Q 83 82 96 92 Q 83 100 70 92 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="83" cy="91" r="5" fill="#0F62FE" />
+            <circle cx="83" cy="91" r="2.5" fill="#191817" />
+            <circle cx="81" cy="89" r="1.2" fill="#FFFFFF" />
+            
+            <path d="M 104 92 Q 117 82 130 92 Q 117 100 104 92 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+            <circle cx="117" cy="91" r="5" fill="#0F62FE" />
+            <circle cx="117" cy="91" r="2.5" fill="#191817" />
+            <circle cx="115" cy="89" r="1.2" fill="#FFFFFF" />
+          </g>
         );
     }
   };
 
-  // Mouth SVG paths per emotion & status
+  // Mouth & Lip Motion
   const getMouth = () => {
     if (isSpeaking) {
       return (
-        <g className="avatar-mouth-speaking">
-          <ellipse cx="100" cy="132" rx="14" ry="10" fill="#eceff4" />
-          <ellipse cx="100" cy="134" rx="10" ry="6" fill="#bf616a" />
+        <g className="mouth-speaking-group">
+          <path d="M 84 122 Q 100 144 116 122 Z" fill="#191817" stroke="#191817" strokeWidth="2" />
+          <path d="M 88 123 Q 100 130 112 123 Z" fill="#FFFFFF" />
+          <ellipse cx="100" cy="133" rx="7" ry="4" fill="#0F62FE" />
         </g>
       );
     }
 
     switch (emotion) {
       case 'warm':
-        return <path d="M 85 128 Q 100 140 115 128" stroke="#eceff4" strokeWidth="4" strokeLinecap="round" fill="none" />;
+        return <path d="M 86 122 Q 100 134 114 122" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />;
       case 'skeptical':
-        return <path d="M 86 134 Q 100 128 114 130" stroke="#ebcb8b" strokeWidth="4" strokeLinecap="round" fill="none" />;
+        return <path d="M 86 127 Q 100 120 114 124" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />;
       case 'impressed':
         return (
           <path
-            d="M 84 126 Q 100 142 116 126 Z"
-            fill="#a3be8c"
-            stroke="#eceff4"
-            strokeWidth="2"
+            d="M 84 122 Q 100 140 116 122 Z"
+            fill="#0F62FE"
+            stroke="#191817"
+            strokeWidth="2.5"
           />
         );
       case 'stern':
-        return <line x1="86" y1="132" x2="114" y2="132" stroke="#bf616a" strokeWidth="4.5" strokeLinecap="round" />;
+        return <line x1="86" y1="126" x2="114" y2="126" stroke="#191817" strokeWidth="4" strokeLinecap="round" />;
       case 'neutral':
       default:
-        return <line x1="88" y1="130" x2="112" y2="130" stroke="#eceff4" strokeWidth="3.5" strokeLinecap="round" />;
+        return <path d="M 86 124 Q 100 128 114 124" stroke="#191817" strokeWidth="3.5" strokeLinecap="round" fill="none" />;
     }
   };
 
   return (
-    <div
-      className={`avatar-container ${isSpeaking ? 'is-speaking' : ''}`}
-      style={{
-        backgroundColor: theme.bg,
-        borderColor: theme.border,
-        boxShadow: `0 0 24px ${theme.glow}`,
-      }}
-    >
-      <div className="avatar-header">
-        <span className={`status-badge ${isSpeaking ? 'status-speaking' : 'status-idle'}`}>
-          {status === 'speaking'
-            ? '● SPEAKING'
-            : status === 'listening'
-            ? '🔴 LISTENING'
-            : status === 'user_finished'
-            ? '✓ USER FINISHED'
-            : status === 'agent_processing'
-            ? '⚙ PROCESSING'
-            : '○ IDLE'}
-        </span>
-        <span className={`emotion-badge ${theme.badgeClass}`}>
-          {theme.label}
-        </span>
+    <div className={`sleek-humanoid-wrapper humanoid-figure-wrapper ${isSpeaking ? 'is-speaking' : ''}`}>
+      <div className="avatar-emotion-tag" style={{ backgroundColor: currentEmotion.badgeBg, color: currentEmotion.textColor }}>
+        EXPRESSION: {currentEmotion.label}
       </div>
 
-      <div className="avatar-graphic">
-        <svg viewBox="0 0 200 200" width="180" height="180" className="avatar-svg">
-          {/* Outer glow background ring */}
-          <circle cx="100" cy="100" r="88" fill="none" stroke={theme.border} strokeWidth="2" opacity="0.4" />
+      <div className="avatar-graphic-container">
+        <svg viewBox="0 0 200 200" className="avatar-svg-responsive">
+          {/* Base Sleek Floor Shadow */}
+          <ellipse cx="100" cy="188" rx="80" ry="8" fill="#E2E8F0" stroke="#191817" strokeWidth="1.5" />
           
-          {/* Head base */}
-          <circle cx="100" cy="100" r="72" fill="#2e3440" stroke={theme.border} strokeWidth="3" />
+          {/* Outer Persona Ring */}
+          <circle cx="100" cy="96" r="88" fill="none" stroke="#191817" strokeWidth="2" strokeDasharray="4 4" opacity="0.4" />
 
-          {/* Shoulders / suit neck */}
-          <path d="M 40 185 Q 100 145 160 185 Z" fill="#3b4252" opacity="0.8" />
-          <path d="M 85 152 L 100 175 L 115 152 Z" fill="#4c566a" />
+          {/* Sleek Dark Hair Back Silhouette */}
+          <path d="M 48 90 C 46 32, 154 32, 152 90 Z" fill="#191817" />
+
+          {/* Neck */}
+          <rect x="88" y="126" width="24" height="26" rx="4" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+          <path d="M 88 132 L 100 144 L 112 132" stroke="#CBD5E1" strokeWidth="1.5" fill="none" />
+
+          {/* Modern Head Oval */}
+          <path d="M 52 78 C 50 42, 150 42, 148 78 C 146 122, 132 138, 100 138 C 68 138, 54 122, 52 78 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="3" />
+
+          {/* Styled Front Hairlines */}
+          <path d="M 52 72 Q 80 44 100 58 Q 128 44 148 72 Q 132 48 100 48 Q 68 48 52 72 Z" fill="#191817" />
+
+          {/* Sculpted Ears */}
+          <path d="M 52 86 C 45 86, 45 102, 52 102 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+          <path d="M 148 86 C 155 86, 155 102, 148 102 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2.5" />
+
+          {/* Tailored Tech Suit / Blazer */}
+          <path d="M 28 188 Q 100 142 172 188 Z" fill="#191817" stroke="#191817" strokeWidth="2" />
+          {/* Shirt Collar */}
+          <path d="M 82 148 L 100 176 L 118 148 Z" fill="#FFFFFF" stroke="#191817" strokeWidth="2" />
+          {/* IBM Blue Tie */}
+          <path d="M 94 154 L 100 182 L 106 154 Z" fill="#0F62FE" />
 
           {/* Eyebrows */}
           {getEyebrows()}
@@ -231,8 +211,8 @@ export const Avatar2D: React.FC<Avatar2DProps> = ({ status, emotion }) => {
           {/* Eyes */}
           {getEyes()}
 
-          {/* Nose */}
-          <path d="M 100 108 L 97 118 L 103 118" stroke="#4c566a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          {/* Sculpted Nose Bridge */}
+          <path d="M 100 90 L 96 104 L 102 104" stroke="#191817" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Mouth */}
           {getMouth()}

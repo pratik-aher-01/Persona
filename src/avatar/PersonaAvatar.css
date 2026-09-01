@@ -1,0 +1,138 @@
+.persona-vrm-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+  box-shadow: none;
+}
+
+/* No speaking highlight — avatar is borderless */
+.persona-vrm-wrapper.is-speaking {
+  border: none;
+  box-shadow: none;
+}
+
+.vrm-canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vrm-canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  outline: none;
+}
+
+.avatar-emotion-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+.vrm-badge-footer {
+  display: none;
+}
+
+.vrm-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.vrm-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(15, 98, 254, 0.15);
+  border-top-color: #0f62fe;
+  border-radius: 50%;
+  animation: vrmSpin 0.8s linear infinite;
+}
+
+@keyframes vrmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #191817;
+}
+
+.vrm-error-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(254, 242, 242, 0.96);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 28px;
+}
+
+.error-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #991b1b;
+}
+
+.error-desc {
+  font-size: 12px;
+  color: #7f1d1d;
+  max-width: 320px;
+  margin: 0;
+}
+
+.expected-path-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #451a03;
+  background: #fef3c7;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.expected-path-note code {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}

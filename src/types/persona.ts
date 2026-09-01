@@ -2,11 +2,41 @@ export type Emotion = 'neutral' | 'warm' | 'skeptical' | 'impressed' | 'stern';
 
 export type TurnStatus = 'idle' | 'listening' | 'user_finished' | 'agent_processing' | 'speaking';
 export type AvatarStatus = TurnStatus;
+export type ScenarioMode = string;
 
 export interface ToolCallRecord {
   tool: string;
   timestamp: string;
   args: Record<string, unknown>;
+}
+
+export type ThemeMode = 'light' | 'dark';
+
+export interface VrmTuningConfig {
+  lighting: {
+    keyIntensity: number;
+    fillIntensity: number;
+    rimIntensity: number;
+    ambientIntensity: number;
+    keyX: number;
+    keyY: number;
+    keyZ: number;
+    exposure: number;
+  };
+  camera: {
+    fov: number;
+    cameraZ: number;
+    cameraYOffset: number;
+    cameraLookYOffset: number;
+    x: number;
+    y: number;
+  };
+  avatar: {
+    scale: number;
+    x: number;
+    y: number;
+    z: number;
+  };
 }
 
 export interface DemoState {
@@ -22,4 +52,8 @@ export interface DemoState {
   interimTranscript: string;
   isListening: boolean;
   micError: string | null;
+  activePersonaId: string;
+  selectedPersonaId: string;
+  theme: ThemeMode;
 }
+
