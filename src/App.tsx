@@ -35,13 +35,17 @@ export default function App() {
   const [vrmReport, setVrmReport] = useState<VrmValidationReport | null>(null);
   
   const gesturePlayRef = useRef<((name: string) => void) | null>(null);
-  const cameraApiRef   = useRef<{ set: (c: object) => void; get: () => object } | null>(null);
-  const lightingApiRef = useRef<{ set: (c: object) => void; get: () => object } | null>(null);
-  const avatarApiRef   = useRef<{ set: (c: object) => void; get: () => object } | null>(null);
+  const attentionChangeRef = useRef<((target: 'user' | 'center' | 'away') => void) | null>(null);
+  const [cameraApi, setCameraApi] = useState<{ set: (c: object) => void; get: () => object } | null>(null);
+  const [lightingApi, setLightingApi] = useState<{ set: (c: object) => void; get: () => object } | null>(null);
+  const [avatarApi, setAvatarApi] = useState<{ set: (c: object) => void; get: () => object } | null>(null);
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const stateRef = useRef(state);
-  stateRef.current = state;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const selectedPersona = getPersonaById(state.selectedPersonaId);
 
@@ -115,13 +119,24 @@ export default function App() {
 
       const recognizer = new SpeechRecognizer(
         (interimText) => {
-          setState((p) => ({ ...p, interimTranscript: interimText }));
+          setState((p) => {
+            // Handle interruption: if user starts speaking while Persona is speaking, stop TTS
+            if (p.status === 'speaking') {
+              voiceEngine.stop();
+            }
+            return {
+              ...p,
+              status: 'listening',
+              interimTranscript: interimText,
+            };
+          });
         },
         (finalText) => {
           setState((p) => {
             const nextId = p.utteranceId + 1;
             return {
               ...p,
+              status: 'agent_processing',
               userTranscript: p.userTranscript
                 ? `${p.userTranscript} ${finalText}`
                 : finalText,
@@ -135,6 +150,7 @@ export default function App() {
           setState((p) => ({
             ...p,
             isListening: listening,
+            status: listening ? (p.status === 'speaking' ? 'speaking' : 'listening') : (p.status === 'speaking' ? 'speaking' : 'idle'),
             ...(listening ? { micError: null } : { interimTranscript: '' }),
           }));
         },
@@ -143,8 +159,19 @@ export default function App() {
             ...p,
             micError: errorMsg,
             isListening: false,
+            status: 'idle',
             interimTranscript: '',
           }));
+        },
+        () => {
+          // Speech Start callback — prompt interruption handling
+          if (stateRef.current.status === 'speaking') {
+            voiceEngine.stop();
+            setState((p) => ({
+              ...p,
+              status: 'listening',
+            }));
+          }
         }
       );
 
@@ -202,17 +229,17 @@ export default function App() {
         setState((prev) => ({ ...prev, status: 'speaking', isListening: false }));
       },
       onEnd: () => {
-        setState((prev) => ({ ...prev, status: 'idle' }));
+        setState((prev) => (prev.status === 'speaking' ? { ...prev, status: 'idle' } : prev));
       },
       onError: () => {
-        setState((prev) => ({ ...prev, status: 'idle' }));
+        setState((prev) => (prev.status === 'speaking' ? { ...prev, status: 'idle' } : prev));
       },
     });
 
     if (!success) {
       setSpeechWarning('Speech synthesis unavailable in this browser.');
       setTimeout(() => {
-        setState((prev) => ({ ...prev, status: 'idle' }));
+        setState((prev) => (prev.status === 'speaking' ? { ...prev, status: 'idle' } : prev));
       }, 2000);
     } else {
       setSpeechWarning(null);
@@ -230,6 +257,18 @@ export default function App() {
   const handleSetActivity = useCallback((status: import('./types/persona').AvatarStatus) => {
     voiceEngine.stop();
     setState((prev) => ({ ...prev, status }));
+  }, []);
+
+  const handleEmotionChange = useCallback((emotion: Emotion) => {
+    setState((prev) => ({
+      ...prev,
+      emotion,
+      lastToolCall: {
+        tool: 'set_expression() [WebMCP]',
+        timestamp: new Date().toLocaleTimeString(),
+        args: { emotion },
+      },
+    }));
   }, []);
 
   useEffect(() => {
@@ -250,12 +289,29 @@ export default function App() {
       },
       () => {
         const curr = stateRef.current;
+        const pending = curr.pendingUserUtterance;
+        const hasNewInput = Boolean(pending.trim());
+        if (hasNewInput) {
+          setState((prev) => ({
+            ...prev,
+            pendingUserUtterance: '',
+          }));
+        }
         return {
-          transcript: curr.pendingUserUtterance,
-          hasNewInput: Boolean(curr.pendingUserUtterance.trim()),
+          transcript: pending,
+          hasNewInput,
           utteranceId: curr.utteranceId,
           isListening: curr.isListening,
         };
+      },
+      (gesture) => {
+        gesturePlayRef.current?.(gesture);
+      },
+      (expression) => {
+        handleEmotionChange(expression);
+      },
+      (target) => {
+        attentionChangeRef.current?.(target);
       }
     ).then((mcpStatus) => {
       if (isMounted) {
@@ -270,7 +326,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [handleSpeak]);
+  }, [handleSpeak, handleEmotionChange]);
 
   return (
     <div className="persona-app-container" data-theme={state.theme}>
@@ -418,9 +474,10 @@ export default function App() {
                 emotion={state.emotion}
                 onValidationReport={setVrmReport}
                 onGestureRef={(fn) => { gesturePlayRef.current = fn; }}
-                onCameraRef={(api) => { cameraApiRef.current = api as typeof cameraApiRef.current; }}
-                onLightingRef={(api) => { lightingApiRef.current = api as typeof lightingApiRef.current; }}
-                onAvatarRef={(api) => { avatarApiRef.current = api as typeof avatarApiRef.current; }}
+                onAttentionRef={(fn) => { attentionChangeRef.current = fn; }}
+                onCameraRef={(api) => { setCameraApi(api as typeof cameraApi); }}
+                onLightingRef={(api) => { setLightingApi(api as typeof lightingApi); }}
+                onAvatarRef={(api) => { setAvatarApi(api as typeof avatarApi); }}
               />
             ) : (
               <div className="persona-coming-soon-hero">
@@ -598,9 +655,9 @@ export default function App() {
                 currentEmotion={state.emotion}
                 currentStatus={state.status}
                 vrmReport={vrmReport}
-                cameraApi={cameraApiRef.current as Parameters<typeof ManualControls>[0]['cameraApi']}
-                lightingApi={lightingApiRef.current as Parameters<typeof ManualControls>[0]['lightingApi']}
-                avatarApi={avatarApiRef.current as Parameters<typeof ManualControls>[0]['avatarApi']}
+                cameraApi={cameraApi as Parameters<typeof ManualControls>[0]['cameraApi']}
+                lightingApi={lightingApi as Parameters<typeof ManualControls>[0]['lightingApi']}
+                avatarApi={avatarApi as Parameters<typeof ManualControls>[0]['avatarApi']}
               />
             </div>
           </div>

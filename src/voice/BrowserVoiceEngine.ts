@@ -158,9 +158,11 @@ export class BrowserVoiceEngine implements IVoiceEngine {
       };
 
       utterance.onerror = (event) => {
-        if (event.error !== 'canceled') {
-          console.warn('[BrowserVoiceEngine] Utterance error:', event);
+        if (event.error === 'interrupted' || event.error === 'canceled') {
+          // Intentionally cancelled or interrupted — do not treat as an error or trigger idle reset
+          return;
         }
+        console.warn('[BrowserVoiceEngine] Utterance error:', event);
         options.onError?.(event);
       };
 

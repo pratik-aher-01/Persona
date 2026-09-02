@@ -65,6 +65,9 @@ const EMOTIONS: { key: Emotion; label: string }[] = [
   { key: 'skeptical', label: 'Skeptical' },
   { key: 'impressed', label: 'Impressed' },
   { key: 'stern',     label: 'Stern'     },
+  { key: 'concerned', label: 'Concerned' },
+  { key: 'surprised', label: 'Surprised' },
+  { key: 'thinking',  label: 'Thinking'  },
 ];
 
 const QUICK_PHRASES: { text: string; emotion: Emotion }[] = [
@@ -73,9 +76,22 @@ const QUICK_PHRASES: { text: string; emotion: Emotion }[] = [
   { text: "Hmm, I'm not entirely convinced. Can you elaborate on that?", emotion: 'skeptical' },
   { text: "Wow, that's impressive! I didn't expect that level of depth.", emotion: 'impressed' },
   { text: "That approach has significant risks. Walk me through your reasoning.", emotion: 'stern' },
+  { text: "I'm concerned about how this handles edge cases under load.", emotion: 'concerned' },
+  { text: "Oh, wow! That is completely unexpected.", emotion: 'surprised' },
+  { text: "Let me ponder that architectural trade-off for a moment...", emotion: 'thinking' },
 ];
 
-const GESTURES = ['nod', 'head_tilt', 'thinking', 'greeting'];
+const GESTURES = [
+  'nod',
+  'shake_head',
+  'head_tilt',
+  'acknowledge',
+  'agree',
+  'disagree',
+  'thinking',
+  'lean_forward',
+  'lean_back',
+];
 
 const ACTIVITIES: { key: AvatarStatus; label: string }[] = [
   { key: 'idle',             label: '💤  IDLE'      },
@@ -158,80 +174,63 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
 }) => {
   const [text, setText] = useState('Good morning. Tell me about your background.');
   const [selectedEmotion, setSelectedEmotion] = useState<Emotion>(currentEmotion);
+  const [prevEmotion, setPrevEmotion] = useState<Emotion>(currentEmotion);
+  if (prevEmotion !== currentEmotion) {
+    setPrevEmotion(currentEmotion);
+    setSelectedEmotion(currentEmotion);
+  }
+
   const [activeTab, setActiveTab] = useState<'speak' | 'activity' | 'scene' | 'debug'>('scene');
   const [copied, setCopied] = useState(false);
 
+  // Helper to read initial calibration from localStorage
+  const getStoredTuning = () => {
+    try {
+      const stored = localStorage.getItem(TUNING_STORAGE_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // fallback
+    }
+    return null;
+  };
+
   // Camera state
-  const [cam, setCam] = useState<CameraConfig>({
-    fov: DEFAULT_TUNING.camera.fov,
-    cameraZ: DEFAULT_TUNING.camera.z,
-    cameraYOffset: DEFAULT_TUNING.camera.y,
-    cameraLookYOffset: DEFAULT_TUNING.camera.cameraLookYOffset,
-    cameraX: DEFAULT_TUNING.camera.x,
+  const [cam, setCam] = useState<CameraConfig>(() => {
+    const parsed = getStoredTuning();
+    return {
+      fov: parsed?.camera?.fov ?? DEFAULT_TUNING.camera.fov,
+      cameraZ: parsed?.camera?.z ?? DEFAULT_TUNING.camera.z,
+      cameraYOffset: parsed?.camera?.y ?? DEFAULT_TUNING.camera.y,
+      cameraLookYOffset: DEFAULT_TUNING.camera.cameraLookYOffset,
+      cameraX: parsed?.camera?.x ?? DEFAULT_TUNING.camera.x,
+    };
   });
 
   // Lighting state
-  const [lit, setLit] = useState<LightingConfig>({
-    ambient: DEFAULT_TUNING.lighting.ambientIntensity,
-    key: DEFAULT_TUNING.lighting.keyIntensity,
-    fill: DEFAULT_TUNING.lighting.fillIntensity,
-    rim: DEFAULT_TUNING.lighting.rimIntensity,
-    keyX: DEFAULT_TUNING.lighting.keyX,
-    keyY: DEFAULT_TUNING.lighting.keyY,
-    keyZ: DEFAULT_TUNING.lighting.keyZ,
-    exposure: DEFAULT_TUNING.lighting.exposure,
+  const [lit, setLit] = useState<LightingConfig>(() => {
+    const parsed = getStoredTuning();
+    return {
+      ambient: parsed?.lighting?.ambientIntensity ?? DEFAULT_TUNING.lighting.ambientIntensity,
+      key: parsed?.lighting?.keyIntensity ?? DEFAULT_TUNING.lighting.keyIntensity,
+      fill: parsed?.lighting?.fillIntensity ?? DEFAULT_TUNING.lighting.fillIntensity,
+      rim: parsed?.lighting?.rimIntensity ?? DEFAULT_TUNING.lighting.rimIntensity,
+      keyX: parsed?.lighting?.keyX ?? DEFAULT_TUNING.lighting.keyX,
+      keyY: parsed?.lighting?.keyY ?? DEFAULT_TUNING.lighting.keyY,
+      keyZ: parsed?.lighting?.keyZ ?? DEFAULT_TUNING.lighting.keyZ,
+      exposure: parsed?.lighting?.exposure ?? DEFAULT_TUNING.lighting.exposure,
+    };
   });
 
   // Avatar transform state
-  const [avt, setAvt] = useState<AvatarConfig>({
-    scale: DEFAULT_TUNING.avatar.scale,
-    x: DEFAULT_TUNING.avatar.x,
-    y: DEFAULT_TUNING.avatar.y,
-    z: DEFAULT_TUNING.avatar.z,
+  const [avt, setAvt] = useState<AvatarConfig>(() => {
+    const parsed = getStoredTuning();
+    return {
+      scale: parsed?.avatar?.scale ?? DEFAULT_TUNING.avatar.scale,
+      x: parsed?.avatar?.x ?? DEFAULT_TUNING.avatar.x,
+      y: parsed?.avatar?.y ?? DEFAULT_TUNING.avatar.y,
+      z: parsed?.avatar?.z ?? DEFAULT_TUNING.avatar.z,
+    };
   });
-
-  // Load stored calibration from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(TUNING_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.lighting) {
-          setLit(prev => ({
-            ...prev,
-            ambient: parsed.lighting.ambientIntensity ?? prev.ambient,
-            key: parsed.lighting.keyIntensity ?? prev.key,
-            fill: parsed.lighting.fillIntensity ?? prev.fill,
-            rim: parsed.lighting.rimIntensity ?? prev.rim,
-            keyX: parsed.lighting.keyX ?? prev.keyX,
-            keyY: parsed.lighting.keyY ?? prev.keyY,
-            keyZ: parsed.lighting.keyZ ?? prev.keyZ,
-            exposure: parsed.lighting.exposure ?? prev.exposure,
-          }));
-        }
-        if (parsed.camera) {
-          setCam(prev => ({
-            ...prev,
-            fov: parsed.camera.fov ?? prev.fov,
-            cameraZ: parsed.camera.z ?? prev.cameraZ,
-            cameraYOffset: parsed.camera.y ?? prev.cameraYOffset,
-            cameraX: parsed.camera.x ?? prev.cameraX,
-          }));
-        }
-        if (parsed.avatar) {
-          setAvt(prev => ({
-            ...prev,
-            scale: parsed.avatar.scale ?? prev.scale,
-            x: parsed.avatar.x ?? prev.x,
-            y: parsed.avatar.y ?? prev.y,
-            z: parsed.avatar.z ?? prev.z,
-          }));
-        }
-      }
-    } catch {
-      // Fall back to default tuning
-    }
-  }, []);
 
   // Apply state to runtime APIs
   useEffect(() => {
@@ -271,8 +270,6 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
       });
     }
   }, [avatarApi, avt]);
-
-  useEffect(() => { setSelectedEmotion(currentEmotion); }, [currentEmotion]);
 
   // Persist calibration to localStorage
   const saveToStorage = useCallback((
@@ -617,6 +614,7 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
                     ['LookAt',     vrmReport.lookAtAvailable     ? '✓ Available' : '❌ Missing'],
                     ['SpringBones',vrmReport.springBonesAvailable? '✓ Available' : '❌ Missing'],
                     [`Preset Exp (${vrmReport.presetExpressions.length})`, vrmReport.presetExpressions.join(', ') || '—'],
+                    ...(vrmReport.rawMorphTargetsCount ? [['Raw Morph Targets', `${vrmReport.rawMorphTargetsCount} targets on face mesh`]] : []),
                     ...(vrmReport.customExpressions.length > 0
                       ? [[`Custom Exp (${vrmReport.customExpressions.length})`, vrmReport.customExpressions.join(', ')]]
                       : []),

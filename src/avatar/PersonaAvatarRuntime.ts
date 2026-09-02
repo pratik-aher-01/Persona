@@ -6,6 +6,8 @@ import { GazeController } from './gaze';
 import { IdleController } from './animation/idle';
 import { GestureController } from './animation/gestures';
 import type { GestureName } from './animation/gestures';
+import { BehaviorOrchestrator, type SemanticBehavior } from './behavior/behaviorOrchestrator';
+import { HumanizationEngine } from './behavior/humanizationEngine';
 import type {
   AvatarActivity,
   AvatarControllerApi,
@@ -29,6 +31,8 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
   private gazeController: GazeController;
   private idleController: IdleController;
   private gestureController: GestureController;
+  private behaviorOrchestrator: BehaviorOrchestrator;
+  private humanizationEngine: HumanizationEngine;
 
   // State & Validation
   private currentEmotion: PersonaEmotion = 'neutral';
@@ -59,11 +63,6 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
   private keyLight!:     THREE.DirectionalLight;
   private fillLight!:    THREE.DirectionalLight;
   private rimLight!:     THREE.DirectionalLight;
-
-  // Auto-gesture scheduling during activities
-  private speakGestureTimer = 0;
-  private speakGestureInterval = 4.0; // seconds between random speak gestures
-  private thinkGestureScheduled = false;
 
   // Callbacks
   private onLoadCallback?: (report: VrmValidationReport) => void;
@@ -106,6 +105,16 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
     this.gazeController = new GazeController(this.scene);
     this.idleController = new IdleController();
     this.gestureController = new GestureController();
+    this.behaviorOrchestrator = new BehaviorOrchestrator(
+      this.expressionController,
+      this.gestureController,
+      this.gazeController
+    );
+    this.humanizationEngine = new HumanizationEngine(
+      this.expressionController,
+      this.gestureController,
+      this.gazeController
+    );
 
     this.setupLighting();
     this.setupResizeHandler();
@@ -203,16 +212,18 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
     );
 
     // Initialize subsystems with loaded VRM
-    this.expressionController.setVRM(this.vrm);
-    this.gazeController.setVRM(this.vrm, this.scene);
+    const caps = this.expressionController.attach(this.vrm);
+    this.gestureController.attach(this.vrm);
+    this.gazeController.attach(this.vrm, this.scene);
     this.idleController.setVRM(this.vrm);
+    this.humanizationEngine.attach(this.vrm);
 
     // Apply initial emotion & gaze toward user/camera
     this.expressionController.setEmotion(this.currentEmotion);
     this.gazeController.setActivityGaze('idle');
 
     // Run VRM validation inspection & report
-    this.validationReport = this.inspectAndReportVRM(this.vrm);
+    this.validationReport = this.inspectAndReportVRM(this.vrm, caps.rawMorphTargets.size);
     if (this.onLoadCallback) {
       this.onLoadCallback(this.validationReport);
     }
@@ -244,7 +255,7 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
     this.camera.lookAt(0, headY + this.cameraLookYOffset, 0);
   }
 
-  private inspectAndReportVRM(vrm: VRM): VrmValidationReport {
+  private inspectAndReportVRM(vrm: VRM, rawMorphTargetsCount = 0): VrmValidationReport {
     const meta = vrm.meta;
     const expMgr = vrm.expressionManager;
 
@@ -273,6 +284,7 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
       springBonesAvailable: Boolean(vrm.springBoneManager),
       presetExpressions: presetExps,
       customExpressions: customExps,
+      rawMorphTargetsCount,
       vrmMetaName: metaName,
       vrmMetaAuthor: metaAuthor,
     };
@@ -304,8 +316,8 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
         // 5. Gaze (smooth tracking + wander)
         this.gazeController.update(delta);
 
-        // 6. Auto-schedule contextual gestures during speaking
-        this.updateAutoGestures(delta);
+        // 6. Humanization & Natural Behavior Updates
+        this.humanizationEngine.update(delta);
 
         // 7. VRM internal update (springBones, lookAt, etc.)
         this.vrm.update(delta);
@@ -315,56 +327,6 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
     };
 
     animate();
-  }
-
-  /**
-   * Auto-schedules subtle contextual gestures so the avatar doesn't need
-   * the LLM to micro-manage every head movement.
-   */
-  private updateAutoGestures(delta: number) {
-    switch (this.currentActivity) {
-      case 'speaking':
-        // Occasionally nod or tilt during speech
-        if (!this.gestureController.isActive()) {
-          this.speakGestureTimer += delta;
-          if (this.speakGestureTimer >= this.speakGestureInterval) {
-            this.speakGestureTimer = 0;
-            // Randomize next interval (3–7s) so it doesn't feel periodic
-            this.speakGestureInterval = 3.0 + Math.random() * 4.0;
-            // 60% nod, 40% head tilt during speech
-            const gesture: GestureName = Math.random() < 0.6 ? 'nod' : 'head_tilt';
-            this.gestureController.play(gesture);
-          }
-        }
-        break;
-
-      case 'thinking':
-        // Play thinking gesture once when entering this state
-        if (!this.thinkGestureScheduled && !this.gestureController.isActive()) {
-          this.thinkGestureScheduled = true;
-          this.gestureController.play('thinking');
-        }
-        break;
-
-      case 'listening':
-        // Very occasional subtle nod to show active listening (15% per cycle)
-        if (!this.gestureController.isActive()) {
-          this.speakGestureTimer += delta;
-          if (this.speakGestureTimer >= this.speakGestureInterval) {
-            this.speakGestureTimer = 0;
-            this.speakGestureInterval = 5.0 + Math.random() * 5.0;
-            if (Math.random() < 0.2) {
-              this.gestureController.play('nod');
-            }
-          }
-        }
-        break;
-
-      case 'idle':
-      default:
-        // No auto-gestures during idle (let the subtle breathing speak)
-        break;
-    }
   }
 
   // --- AvatarControllerApi Implementation ---
@@ -471,25 +433,21 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
   public setEmotion(emotion: PersonaEmotion) {
     this.currentEmotion = emotion;
     this.expressionController.setEmotion(emotion);
+    this.humanizationEngine.setEmotion(emotion);
+  }
+
+  public setBehavior(behavior: SemanticBehavior) {
+    this.behaviorOrchestrator.setBehavior(behavior);
   }
 
   public setActivity(activity: AvatarActivity) {
     const previous = this.currentActivity;
     this.currentActivity = activity;
 
-    // Reset gesture auto-timer on activity change
-    this.speakGestureTimer = 0;
-    this.speakGestureInterval = 3.5 + Math.random() * 2.5;
-
-    // Reset thinking gesture flag when leaving thinking
-    if (previous === 'thinking' && activity !== 'thinking') {
-      this.thinkGestureScheduled = false;
-    }
-
-    // Propagate activity to all subsystems
+    // Propagate activity through humanization engine, idle controller & behavior orchestrator
     this.idleController.setActivity(activity);
-    this.expressionController.setActivity(activity);
-    this.gazeController.setActivityGaze(activity);
+    this.humanizationEngine.setActivity(activity);
+    this.behaviorOrchestrator.setBehavior(activity as SemanticBehavior);
 
     // Handle speaking sub-state
     if (activity === 'speaking') {
@@ -510,12 +468,35 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
     this.gazeController.setLookTarget(target.x, target.y, target.z);
   }
 
+  public lookAtUser() {
+    this.gazeController.lookAtUser();
+  }
+
+  public lookAtCenter() {
+    this.gazeController.lookAtCenter();
+  }
+
+  public lookAway() {
+    this.gazeController.lookAway();
+  }
+
   public triggerBlink() {
     this.idleController.triggerBlink();
   }
 
   public playGesture(gestureName: string) {
-    const validGestures: GestureName[] = ['idle', 'nod', 'head_tilt', 'thinking', 'greeting'];
+    const validGestures: GestureName[] = [
+      'idle',
+      'nod',
+      'shake_head',
+      'head_tilt',
+      'acknowledge',
+      'agree',
+      'disagree',
+      'thinking',
+      'lean_forward',
+      'lean_back',
+    ];
     const name = validGestures.includes(gestureName as GestureName)
       ? (gestureName as GestureName)
       : 'nod'; // safe fallback
@@ -548,6 +529,11 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
     }
+
+    this.expressionController.detach();
+    this.gestureController.detach();
+    this.gazeController.detach();
+    this.humanizationEngine.detach();
 
     if (this.vrm) {
       VRMUtils.deepDispose(this.vrm.scene);

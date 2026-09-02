@@ -1,6 +1,36 @@
+export interface SpeechRecognitionResultItem {
+  transcript: string;
+}
+
+export interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionResultItem;
+}
+
+export interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: SpeechRecognitionResult;
+  };
+  error?: string;
+}
+
+export interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: SpeechRecognitionEvent) => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
 export interface IWindow extends Window {
-  SpeechRecognition?: any;
-  webkitSpeechRecognition?: any;
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
 }
 
 export function isSpeechRecognitionSupported(): boolean {
@@ -10,14 +40,15 @@ export function isSpeechRecognitionSupported(): boolean {
 }
 
 export class SpeechRecognizer {
-  private recognition: any = null;
+  private recognition: SpeechRecognitionInstance | null = null;
   private isListening = false;
 
   constructor(
     onInterimResult: (text: string) => void,
     onFinalResult: (text: string) => void,
     onStateChange: (listening: boolean) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    onSpeechStart?: () => void
   ) {
     if (!isSpeechRecognitionSupported()) {
       return;
@@ -26,6 +57,8 @@ export class SpeechRecognizer {
     try {
       const win = window as unknown as IWindow;
       const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+      if (!SpeechRecognitionClass) return;
 
       this.recognition = new SpeechRecognitionClass();
       this.recognition.continuous = true;
@@ -42,7 +75,7 @@ export class SpeechRecognizer {
         onStateChange(false);
       };
 
-      this.recognition.onerror = (event: any) => {
+      this.recognition.onerror = (event: SpeechRecognitionEvent) => {
         const err = event.error || 'unknown_error';
         if (err === 'not-allowed' || err === 'permission-denied') {
           onError('Microphone permission denied. Please allow access in browser settings.');
@@ -55,7 +88,7 @@ export class SpeechRecognizer {
         onStateChange(false);
       };
 
-      this.recognition.onresult = (event: any) => {
+      this.recognition.onresult = (event: SpeechRecognitionEvent) => {
         let interim = '';
         let final = '';
 
@@ -66,6 +99,10 @@ export class SpeechRecognizer {
           } else {
             interim += res[0].transcript;
           }
+        }
+
+        if (interim || final) {
+          onSpeechStart?.();
         }
 
         if (interim) {

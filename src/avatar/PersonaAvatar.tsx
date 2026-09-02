@@ -22,6 +22,7 @@ interface PersonaAvatarProps {
     set: (cfg: Parameters<PersonaAvatarRuntime['setAvatarConfig']>[0]) => void;
     get: () => ReturnType<PersonaAvatarRuntime['getAvatarConfig']>;
   }) => void;
+  onAttentionRef?: (setAttention: (target: 'user' | 'center' | 'away') => void) => void;
 }
 
 export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
@@ -33,6 +34,7 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
   onCameraRef,
   onLightingRef,
   onAvatarRef,
+  onAttentionRef,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<PersonaAvatarRuntime | null>(null);
@@ -40,6 +42,26 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vrmReport, setVrmReport] = useState<VrmValidationReport | null>(null);
+
+  const propsRef = useRef({
+    onValidationReport,
+    onGestureRef,
+    onCameraRef,
+    onLightingRef,
+    onAvatarRef,
+    onAttentionRef,
+  });
+
+  useEffect(() => {
+    propsRef.current = {
+      onValidationReport,
+      onGestureRef,
+      onCameraRef,
+      onLightingRef,
+      onAvatarRef,
+      onAttentionRef,
+    };
+  });
 
   // Initialize Three.js VRM Runtime
   useEffect(() => {
@@ -53,30 +75,31 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
       onLoad: (report) => {
         setIsLoading(false);
         setVrmReport(report);
-        if (onValidationReport) {
-          onValidationReport(report);
+        propsRef.current.onValidationReport?.(report);
+        if (propsRef.current.onGestureRef) {
+          propsRef.current.onGestureRef((name: string) => runtime.playGesture(name));
         }
-        // Expose gesture trigger to parent
-        if (onGestureRef) {
-          onGestureRef((name: string) => runtime.playGesture(name));
+        if (propsRef.current.onAttentionRef) {
+          propsRef.current.onAttentionRef((target: 'user' | 'center' | 'away') => {
+            if (target === 'user') runtime.lookAtUser();
+            else if (target === 'center') runtime.lookAtCenter();
+            else if (target === 'away') runtime.lookAway();
+          });
         }
-        // Expose camera tuning to parent
-        if (onCameraRef) {
-          onCameraRef({
+        if (propsRef.current.onCameraRef) {
+          propsRef.current.onCameraRef({
             set: (cfg) => runtime.setCameraConfig(cfg),
             get: () => runtime.getCameraConfig(),
           });
         }
-        // Expose lighting tuning to parent
-        if (onLightingRef) {
-          onLightingRef({
+        if (propsRef.current.onLightingRef) {
+          propsRef.current.onLightingRef({
             set: (cfg) => runtime.setLightingConfig(cfg),
             get: () => runtime.getLightingConfig(),
           });
         }
-        // Expose avatar tuning to parent
-        if (onAvatarRef) {
-          onAvatarRef({
+        if (propsRef.current.onAvatarRef) {
+          propsRef.current.onAvatarRef({
             set: (cfg) => runtime.setAvatarConfig(cfg),
             get: () => runtime.getAvatarConfig(),
           });
@@ -94,7 +117,7 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
       runtime.dispose();
       runtimeRef.current = null;
     };
-  }, []); // Run once on mount
+  }, [modelUrl]);
 
   // Sync emotion changes
   useEffect(() => {
@@ -126,6 +149,9 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
     skeptical: { label: 'SKEPTICAL', badgeBg: '#FFF3E0', textColor: '#D97706' },
     impressed: { label: 'IMPRESSED', badgeBg: '#E6F4EA', textColor: '#137333' },
     stern: { label: 'STERN', badgeBg: '#FCE8E6', textColor: '#C5221F' },
+    concerned: { label: 'CONCERNED', badgeBg: '#F3E8FF', textColor: '#8A3FFC' },
+    surprised: { label: 'SURPRISED', badgeBg: '#FEF3C7', textColor: '#B45309' },
+    thinking: { label: 'THINKING', badgeBg: '#E0F2FE', textColor: '#0369A1' },
   };
 
   const currentEmotion = emotionLabelMap[emotion] || emotionLabelMap.neutral;

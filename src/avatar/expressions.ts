@@ -1,15 +1,15 @@
 import type { VRM } from '@pixiv/three-vrm';
-import type { PersonaEmotion, AvatarActivity } from './avatarTypes';
+import type { PersonaEmotion, AvatarActivity, VrmCapabilityMap } from './avatarTypes';
+import { VrmExpressionAdapter } from './expression/vrmExpressionAdapter';
+import { resolveSemanticExpression } from './expression/expressionProfiles';
 
 export class ExpressionController {
-  private vrm: VRM | null = null;
+  private adapter = new VrmExpressionAdapter();
   private currentEmotion: PersonaEmotion = 'neutral';
   private currentActivity: AvatarActivity = 'idle';
-  private targetWeights: Map<string, number> = new Map();
-  private currentWeights: Map<string, number> = new Map();
   private isSpeaking = false;
 
-  // Organic mouth motion state — multiple oscillators to avoid robotic pulse
+  // Organic mouth motion state — multiple sines to avoid robotic pulse
   private mouthT1 = 0;
   private mouthT2 = 0;
   private mouthT3 = 0;
@@ -17,13 +17,22 @@ export class ExpressionController {
 
   constructor(vrm?: VRM) {
     if (vrm) {
-      this.setVRM(vrm);
+      this.attach(vrm);
     }
   }
 
-  public setVRM(vrm: VRM) {
-    this.vrm = vrm;
+  public attach(vrm: VRM): VrmCapabilityMap {
+    const caps = this.adapter.attach(vrm);
     this.applyEmotion(this.currentEmotion);
+    return caps;
+  }
+
+  public detach() {
+    this.adapter.detach();
+  }
+
+  public getCapabilityMap(): VrmCapabilityMap {
+    return this.adapter.getCapabilityMap();
   }
 
   public setEmotion(emotion: PersonaEmotion) {
@@ -44,12 +53,14 @@ export class ExpressionController {
   public setSpeaking(speaking: boolean) {
     this.isSpeaking = speaking;
     if (!speaking) {
-      // Reset all mouth shape targets smoothly to zero
-      this.setTargetWeight('aa', 0);
-      this.setTargetWeight('ih', 0);
-      this.setTargetWeight('ou', 0);
-      this.setTargetWeight('ee', 0);
-      this.setTargetWeight('oh', 0);
+      // Reset mouth shape targets smoothly to zero
+      this.adapter.setTargetWeight('aa', 0);
+      this.adapter.setTargetWeight('ih', 0);
+      this.adapter.setTargetWeight('ou', 0);
+      this.adapter.setTargetWeight('ee', 0);
+      this.adapter.setTargetWeight('oh', 0);
+      this.adapter.setTargetWeight('Fcl_MTH_A', 0);
+
       // Reset mouth oscillators for next speaking session
       this.mouthT1 = 0;
       this.mouthT2 = 0;
@@ -58,75 +69,47 @@ export class ExpressionController {
   }
 
   public setCustomExpression(name: string, weight: number) {
-    this.setTargetWeight(name, weight);
-  }
-
-  private setTargetWeight(name: string, weight: number) {
-    this.targetWeights.set(name, Math.max(0, Math.min(1, weight)));
+    this.adapter.setTargetWeight(name, weight);
   }
 
   private applyEmotion(emotion: PersonaEmotion) {
-    // Reset all emotion-tier expression targets
-    const resetExpressions = ['neutral', 'happy', 'angry', 'sad', 'relaxed', 'surprised'];
-    for (const exp of resetExpressions) {
-      this.setTargetWeight(exp, 0);
-    }
+    if (!this.adapter.isAttached()) return;
 
-    if (!this.vrm || !this.vrm.expressionManager) return;
-
-    const available = this.vrm.expressionManager.expressionMap;
+    const caps = this.adapter.getCapabilityMap();
 
     // Scale emotion intensity slightly by activity
-    // Listening → neutral/attentive lean (soften strong emotions slightly)
-    // Thinking → subtle (pulled inward)
+    // Thinking -> subtle (pulled inward)
+    // Listening -> attentive lean
     let intensityScale = 1.0;
     if (this.currentActivity === 'thinking') intensityScale = 0.75;
     else if (this.currentActivity === 'listening') intensityScale = 0.9;
 
-    switch (emotion) {
-      case 'warm':
-        if (available['happy'])   this.setTargetWeight('happy',   0.82 * intensityScale);
-        else if (available['relaxed']) this.setTargetWeight('relaxed', 0.68 * intensityScale);
-        break;
+    // Resolve semantic expression to target bindings via model-independent profile
+    const bindings = resolveSemanticExpression(emotion, caps);
 
-      case 'skeptical':
-        if (available['neutral']) this.setTargetWeight('neutral', 0.65 * intensityScale);
-        if (available['angry'])   this.setTargetWeight('angry',   0.28 * intensityScale);
-        else if (available['surprised']) this.setTargetWeight('surprised', 0.20 * intensityScale);
-        break;
+    // Reset standard emotion preset slots first
+    const resetList = ['neutral', 'happy', 'angry', 'sad', 'relaxed', 'surprised'];
+    this.adapter.resetAllTargets(resetList);
 
-      case 'impressed':
-        if (available['surprised']) this.setTargetWeight('surprised', 0.62 * intensityScale);
-        if (available['happy'])     this.setTargetWeight('happy',     0.42 * intensityScale);
-        break;
-
-      case 'stern':
-        if (available['angry']) this.setTargetWeight('angry', 0.68 * intensityScale);
-        else if (available['sad']) this.setTargetWeight('sad', 0.42 * intensityScale);
-        break;
-
-      case 'neutral':
-      default:
-        if (available['neutral']) this.setTargetWeight('neutral', 1.0 * intensityScale);
-        break;
+    // Apply resolved bindings
+    for (const binding of bindings) {
+      this.adapter.setTargetWeight(binding.name, binding.weight * intensityScale);
     }
   }
 
   public update(delta: number) {
-    if (!this.vrm || !this.vrm.expressionManager) return;
+    if (!this.adapter.isAttached()) return;
 
-    // ── ORGANIC MOUTH MOTION ───────────────────────────────────────
+    // ── 1. ORGANIC MOUTH MOTION ───────────────────────────────────────
     if (this.isSpeaking) {
-      // Three detuned oscillators that beat against each other
-      // This creates an irregular, organic open/close rhythm
+      // Three detuned oscillators beating against each other
       this.mouthT1 += delta * 10.8; // primary syllable rate
-      this.mouthT2 += delta *  7.3; // secondary envelope
-      this.mouthT3 += delta *  3.1; // slow amplitude modulation
+      this.mouthT2 += delta * 7.3;  // secondary envelope
+      this.mouthT3 += delta * 3.1;  // slow amplitude modulation
 
-      // Combine: primary * secondary envelope * slow mod
       const primary  = Math.abs(Math.sin(this.mouthT1));
-      const envelope = (Math.sin(this.mouthT2) * 0.5 + 0.5);           // 0..1
-      const slowMod  = (Math.sin(this.mouthT3) * 0.3 + 0.7);           // 0.4..1.0
+      const envelope = Math.sin(this.mouthT2) * 0.5 + 0.5;
+      const slowMod  = Math.sin(this.mouthT3) * 0.3 + 0.7;
       const rawMouth = primary * envelope * slowMod;
 
       // Clamp to realistic range: mouth doesn't close fully during speech
@@ -135,25 +118,17 @@ export class ExpressionController {
       // Smooth the mouth value so it doesn't snap
       this.smoothMouth += (targetMouth - this.smoothMouth) * Math.min(1.0, delta * 18.0);
 
-      const available = this.vrm.expressionManager.expressionMap;
-      if (available['aa']) {
-        this.setTargetWeight('aa', this.smoothMouth);
-      } else if (available['oh']) {
-        this.setTargetWeight('oh', this.smoothMouth);
+      const caps = this.adapter.getCapabilityMap();
+      if (caps.presetExpressions.has('aa')) {
+        this.adapter.setTargetWeight('aa', this.smoothMouth);
+      } else if (caps.presetExpressions.has('oh')) {
+        this.adapter.setTargetWeight('oh', this.smoothMouth);
+      } else if (caps.rawMorphTargets.has('Fcl_MTH_A')) {
+        this.adapter.setTargetWeight('Fcl_MTH_A', this.smoothMouth);
       }
     }
 
-    // ── SMOOTH LERP ALL WEIGHTS ────────────────────────────────────
-    const lerpFactor = Math.min(1.0, delta * 9.0);
-
-    const allKeys = new Set([...this.targetWeights.keys(), ...this.currentWeights.keys()]);
-    for (const key of allKeys) {
-      const target  = this.targetWeights.get(key)  ?? 0;
-      const current = this.currentWeights.get(key) ?? 0;
-      const next    = current + (target - current) * lerpFactor;
-
-      this.currentWeights.set(key, next);
-      this.vrm.expressionManager.setValue(key, next);
-    }
+    // ── 2. SMOOTH LERP ALL WEIGHTS ────────────────────────────────────
+    this.adapter.update(delta);
   }
 }

@@ -1,9 +1,18 @@
 import type * as THREE from 'three';
 import type { Emotion } from '../types/persona';
 
-export type PersonaEmotion = Emotion; // 'neutral' | 'warm' | 'skeptical' | 'impressed' | 'stern'
+export type PersonaEmotion = Emotion;
+export type SemanticExpression = PersonaEmotion;
 
 export type AvatarActivity = 'idle' | 'listening' | 'thinking' | 'speaking';
+
+export interface VrmCapabilityMap {
+  presetExpressions: Set<string>;
+  customExpressions: Set<string>;
+  rawMorphTargets: Set<string>;
+  hasMouthVisemes: boolean;
+  hasEyeBlink: boolean;
+}
 
 export interface AvatarState {
   emotion: PersonaEmotion;
@@ -20,6 +29,7 @@ export interface VrmValidationReport {
   springBonesAvailable: boolean;
   presetExpressions: string[];
   customExpressions: string[];
+  rawMorphTargetsCount?: number;
   vrmMetaName?: string;
   vrmMetaAuthor?: string;
 }

@@ -1,6 +1,6 @@
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { AvatarActivity } from '../avatarTypes';
-import type { GestureName } from './gestures';
+import type { GestureName, GestureOffsets } from './gestures';
 
 // ─── Natural Idle Pose ────────────────────────────────────────────────────────
 // All values are rotations applied to VRM normalized-space bones.
@@ -56,10 +56,20 @@ export class IdleController {
   private armPose: Record<string, { x: number; y: number; z: number }> = {};
 
   // External gesture offsets (supplied by GestureController each frame)
-  private gestureHeadPitch  = 0;
-  private gestureHeadYaw    = 0;
-  private gestureHeadRoll   = 0;
-  private gestureSpinePitch = 0;
+  private gestureOffsets: GestureOffsets = {
+    headPitch: 0,
+    headYaw: 0,
+    headRoll: 0,
+    neckPitch: 0,
+    neckYaw: 0,
+    neckRoll: 0,
+    spinePitch: 0,
+    spineYaw: 0,
+    spineRoll: 0,
+    chestPitch: 0,
+    chestYaw: 0,
+    chestRoll: 0,
+  };
 
   // Smoothed motion outputs (to avoid abrupt changes between activities)
   private smoothBreath = 0;
@@ -104,16 +114,8 @@ export class IdleController {
   }
 
   /** Called each frame by GestureController to supply current gesture bone offsets */
-  public applyGestureOffsets(offsets: {
-    headPitch:  number;
-    headYaw:    number;
-    headRoll:   number;
-    spinePitch: number;
-  }) {
-    this.gestureHeadPitch  = offsets.headPitch;
-    this.gestureHeadYaw    = offsets.headYaw;
-    this.gestureHeadRoll   = offsets.headRoll;
-    this.gestureSpinePitch = offsets.spinePitch;
+  public applyGestureOffsets(offsets: GestureOffsets) {
+    this.gestureOffsets = { ...offsets };
   }
 
   public setBlinkingEnabled(enabled: boolean) {
@@ -182,9 +184,9 @@ export class IdleController {
     if (!this.vrm.humanoid) return;
 
     // Scale motion intensity by activity
-    let breathScale = 1.0;
-    let swayScale   = 1.0;
-    let microScale  = 1.0;
+    let breathScale: number;
+    let swayScale: number;
+    let microScale: number;
 
     switch (this.currentActivity) {
       case 'speaking':
@@ -248,18 +250,34 @@ export class IdleController {
       }
     }
 
-    // ── 4. APPLY SPINE ──────────────────────────────────────────────
+    // ── 4. APPLY SPINE & CHEST ──────────────────────────────────────
     const spine = this.vrm.humanoid.getNormalizedBoneNode('spine');
     if (spine) {
-      spine.rotation.x = this.baseSpineX + this.smoothBreath + this.gestureSpinePitch;
+      spine.rotation.x = this.baseSpineX + this.smoothBreath + this.gestureOffsets.spinePitch;
+      spine.rotation.y = this.gestureOffsets.spineYaw;
+      spine.rotation.z = this.gestureOffsets.spineRoll;
     }
 
-    // ── 5. APPLY HEAD ───────────────────────────────────────────────
+    const chest = this.vrm.humanoid.getNormalizedBoneNode('chest');
+    if (chest) {
+      chest.rotation.x = this.gestureOffsets.chestPitch;
+      chest.rotation.y = this.gestureOffsets.chestYaw;
+      chest.rotation.z = this.gestureOffsets.chestRoll;
+    }
+
+    // ── 5. APPLY NECK & HEAD ────────────────────────────────────────
+    const neck = this.vrm.humanoid.getNormalizedBoneNode('neck');
+    if (neck) {
+      neck.rotation.x = this.gestureOffsets.neckPitch;
+      neck.rotation.y = this.gestureOffsets.neckYaw;
+      neck.rotation.z = this.gestureOffsets.neckRoll;
+    }
+
     const head = this.vrm.humanoid.getNormalizedBoneNode('head');
     if (head) {
-      head.rotation.x = this.baseHeadX + this.smoothSwayX + this.gestureHeadPitch;
-      head.rotation.y = this.baseHeadY + this.smoothSwayY + this.gestureHeadYaw;
-      head.rotation.z = this.gestureHeadRoll;
+      head.rotation.x = this.baseHeadX + this.smoothSwayX + this.gestureOffsets.headPitch;
+      head.rotation.y = this.baseHeadY + this.smoothSwayY + this.gestureOffsets.headYaw;
+      head.rotation.z = this.gestureOffsets.headRoll;
     }
   }
 }

@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import type { VRM } from '@pixiv/three-vrm';
 import type { AvatarActivity } from './avatarTypes';
 
-// Gaze target positions relative to the scene (Z-forward convention)
-// These are world-space positions; the VRM lookAt system handles conversion.
 type GazePreset = 'user' | 'away' | 'down' | 'neutral';
 
 interface GazePosition {
@@ -42,7 +40,8 @@ export class GazeController {
     }
   }
 
-  public setVRM(vrm: VRM, scene: THREE.Scene) {
+  public attach(vrm: VRM, scene: THREE.Scene) {
+    this.detach();
     this.vrm = vrm;
 
     if (!scene.getObjectByName('GazeTarget')) {
@@ -54,9 +53,37 @@ export class GazeController {
     }
   }
 
+  public setVRM(vrm: VRM, scene: THREE.Scene) {
+    this.attach(vrm, scene);
+  }
+
+  public detach() {
+    if (this.vrm && this.vrm.lookAt) {
+      this.vrm.lookAt.target = null;
+    }
+    this.vrm = null;
+  }
+
   /** Set the camera position so gaze-to-user tracks correctly */
   public setCameraPosition(x: number, y: number, z: number) {
     this.cameraPosition.set(x, y, z);
+    // Refresh user gaze target default position
+    this.desiredTarget.set(x, y, z);
+  }
+
+  /** Explicit Semantic API: Point gaze directly at user camera */
+  public lookAtUser() {
+    this.desiredTarget.set(this.cameraPosition.x, this.cameraPosition.y, this.cameraPosition.z);
+  }
+
+  /** Explicit Semantic API: Point gaze at scene center forward point */
+  public lookAtCenter() {
+    this.desiredTarget.set(0, this.cameraPosition.y, 2.0);
+  }
+
+  /** Explicit Semantic API: Shift gaze away for reflective thinking */
+  public lookAway() {
+    this.setGazePreset('down');
   }
 
   /** Directly set a world-space look target */
@@ -73,32 +100,30 @@ export class GazeController {
     switch (activity) {
       case 'idle':
       case 'speaking':
-        // Look toward camera (user)
-        this.setGazePreset('user');
+        this.lookAtUser();
         break;
 
       case 'listening':
-        // Look toward user with a very slight upward attentive tilt
+        // Look toward user with slight attentive focus
         this.desiredTarget.set(
           this.cameraPosition.x,
           this.cameraPosition.y + 0.04,
-          this.cameraPosition.z,
+          this.cameraPosition.z
         );
         break;
 
       case 'thinking':
-        // Look down-left — classic natural thinking direction
-        this.setGazePreset('down');
+        this.lookAway();
         break;
     }
   }
 
   private setGazePreset(preset: GazePreset) {
     const presets: Record<GazePreset, GazePosition> = {
-      user:    { x: this.cameraPosition.x,        y: this.cameraPosition.y,        z: this.cameraPosition.z },
-      away:    { x: this.cameraPosition.x + 0.35, y: this.cameraPosition.y + 0.05, z: this.cameraPosition.z },
-      down:    { x: this.cameraPosition.x - 0.25, y: this.cameraPosition.y - 0.25, z: this.cameraPosition.z },
-      neutral: { x: 0,                             y: 1.4,                           z: 2.0 },
+      user: { x: this.cameraPosition.x, y: this.cameraPosition.y, z: this.cameraPosition.z },
+      away: { x: this.cameraPosition.x + 0.35, y: this.cameraPosition.y + 0.05, z: this.cameraPosition.z },
+      down: { x: this.cameraPosition.x - 0.25, y: this.cameraPosition.y - 0.25, z: this.cameraPosition.z },
+      neutral: { x: 0, y: 1.4, z: 2.0 },
     };
     const pos = presets[preset];
     this.desiredTarget.set(pos.x, pos.y, pos.z);
@@ -113,13 +138,12 @@ export class GazeController {
 
     this.wanderTime += delta;
 
-    // Micro-wander: extremely subtle eye movement on top of the base target
-    // Keeps the eyes from looking "locked" to a single point
-    const wanderX = Math.sin(this.wanderTime * 0.8  + this.wanderPhaseX) * 0.012;
+    // Micro-wander: subtle eye micro-saccades on top of base target
+    const wanderX = Math.sin(this.wanderTime * 0.8 + this.wanderPhaseX) * 0.012;
     const wanderY = Math.sin(this.wanderTime * 0.55 + this.wanderPhaseY) * 0.008;
 
-    // Smooth lerp toward desired target (slow = natural eye movement)
-    const lerpSpeed = 3.5; // units/sec for gaze following
+    // Smooth lerp toward desired target for natural eye movement
+    const lerpSpeed = 4.0; // units/sec for smooth gaze transitions
     const alpha = Math.min(1.0, delta * lerpSpeed);
     this.smoothedTarget.lerp(this.desiredTarget, alpha);
 
@@ -127,7 +151,7 @@ export class GazeController {
     this.targetObject.position.set(
       this.smoothedTarget.x + wanderX,
       this.smoothedTarget.y + wanderY,
-      this.smoothedTarget.z,
+      this.smoothedTarget.z
     );
   }
 }

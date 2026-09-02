@@ -1,75 +1,66 @@
-# React + TypeScript + Vite
+# Persona — Embodied WebMCP Agent
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Persona is a cutting-edge Embodied WebMCP Agent built with React, Three.js VRM, and Vite. It provides a real-time, interactive 3D avatar interface designed to bridge the gap between AI agents and users through natural voice communication and emotional expressiveness.
 
-Currently, two official plugins are available:
+## 🌟 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Interactive 3D Avatars**: Built with Three.js and `@pixiv/three-vrm` for high-quality, expressive VRM avatars.
+- **Real-Time Voice Communication**: Integrated Web Speech API for Speech-to-Text (STT) and Text-to-Speech (TTS), enabling natural conversations.
+- **Emotion Engine**: Avatars can express various emotions (e.g., neutral, warm, skeptical, impressed, stern, concerned, surprised, thinking) dynamically.
+- **WebMCP Integration**: Connects with WebMCP to allow AI models to interact with the avatar, controlling speech and emotions directly.
+- **Responsive Glassmorphic UI**: A premium, modern user interface featuring dark/light modes, floating side drawers, and real-time transcripts.
+- **Developer & Tuning Controls**: Built-in manual controls for fine-tuning lighting, camera angles, and avatar positioning on the fly.
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Framework**: React 19 + TypeScript + Vite
+- **3D Graphics**: Three.js + `@pixiv/three-vrm`
+- **Agent Integration**: `webmcp-types`
+- **Styling**: Vanilla CSS with Glassmorphism and CSS variables for theme management
 
-## Expanding the ESLint configuration
+## 🚀 Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js (v18 or higher recommended)
+- npm, yarn, or pnpm
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd persona
+   ```
 
-```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+4. Open your browser and navigate to `http://localhost:5173`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Adding VRM Models
 
-```
+To render an avatar, place your `.vrm` files in the `public/models/` directory (e.g., `public/models/persona.vrm`). If a model is not found, a placeholder "Coming Soon" screen will be displayed.
+
+## 💻 Usage
+
+- **Microphone**: Click "START LISTENING" in the bottom footer to allow the app to capture your voice.
+- **Themes**: Use the toggle in the top-right header to switch between Light and Dark modes.
+- **Personas**: Open the left drawer to select different agent scenarios (e.g., Technical Interview).
+- **Tools / Agent Activity**: Open the right drawer to see real-time tool calls (like `speak()`) made by the connected WebMCP agent.
+- **Settings & Tuning**: Click the gear icon (⚙) in the bottom-left to adjust avatar camera, lighting, and manually trigger emotions or speech.
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests to improve the Persona Embodied Agent experience.
+
+## 📄 License
+
+This project is open-source and available under the MIT License.

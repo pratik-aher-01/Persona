@@ -1,4 +1,13 @@
-export type Emotion = 'neutral' | 'warm' | 'skeptical' | 'impressed' | 'stern';
+export type Emotion = 
+  | 'neutral'
+  | 'warm'
+  | 'skeptical'
+  | 'impressed'
+  | 'stern'
+  | 'concerned'
+  | 'surprised'
+  | 'thinking';
+
 
 export type TurnStatus = 'idle' | 'listening' | 'user_finished' | 'agent_processing' | 'speaking';
 export type AvatarStatus = TurnStatus;

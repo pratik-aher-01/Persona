@@ -15,6 +15,9 @@ export const Avatar2D: React.FC<Avatar2DProps> = ({ status, emotion }) => {
     skeptical: { label: 'SKEPTICAL', badgeBg: '#FFF3E0', textColor: '#D97706' },
     impressed: { label: 'IMPRESSED', badgeBg: '#E6F4EA', textColor: '#137333' },
     stern: { label: 'STERN', badgeBg: '#FCE8E6', textColor: '#C5221F' },
+    concerned: { label: 'CONCERNED', badgeBg: '#F3E8FF', textColor: '#8A3FFC' },
+    surprised: { label: 'SURPRISED', badgeBg: '#FEF3C7', textColor: '#B45309' },
+    thinking: { label: 'THINKING', badgeBg: '#E0F2FE', textColor: '#0369A1' },
   };
 
   const currentEmotion = emotionLabelMap[emotion] || emotionLabelMap.neutral;
