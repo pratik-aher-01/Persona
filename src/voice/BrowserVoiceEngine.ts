@@ -45,7 +45,8 @@ export class BrowserVoiceEngine implements IVoiceEngine {
    */
   public selectBestVoice(
     voices?: SpeechSynthesisVoice[],
-    preferredVoiceSpec?: SpeechSynthesisVoice | string | null
+    preferredVoiceSpec?: SpeechSynthesisVoice | string | null,
+    genderPreference?: 'male' | 'female'
   ): SpeechSynthesisVoice | null {
     const list = voices && voices.length > 0 ? voices : this.getVoices();
     if (list.length === 0) {
@@ -72,21 +73,49 @@ export class BrowserVoiceEngine implements IVoiceEngine {
 
     const candidates = englishVoices.length > 0 ? englishVoices : list;
 
-    // 2. Look for high quality / natural voices by name keywords
+    // 2. Gender-aware voice selection heuristic
+    if (genderPreference === 'male') {
+      const maleKeywords = [
+        'microsoft david',
+        'microsoft guy',
+        'microsoft mark',
+        'google us english male',
+        'daniel',
+        'alex',
+        'fred',
+        'george',
+        'james',
+        'male',
+      ];
+      for (const kw of maleKeywords) {
+        const found = candidates.find((v) => v.name.toLowerCase().includes(kw));
+        if (found) return found;
+      }
+    } else if (genderPreference === 'female') {
+      const femaleKeywords = [
+        'microsoft jenny',
+        'microsoft aria',
+        'microsoft zira',
+        'samantha',
+        'karen',
+        'victoria',
+        'female',
+      ];
+      for (const kw of femaleKeywords) {
+        const found = candidates.find((v) => v.name.toLowerCase().includes(kw));
+        if (found) return found;
+      }
+    }
+
+    // 3. Fallback high quality / natural voices by name keywords
     const preferredKeywords = [
       'natural',
       'online',
       'google us english',
-      'google english',
-      'samantha',
-      'karen',
       'daniel',
-      'victoria',
-      'microsoft jenny',
-      'microsoft guy',
-      'microsoft aria',
-      'microsoft zira',
       'microsoft david',
+      'microsoft guy',
+      'samantha',
       'alex',
     ];
 
@@ -95,14 +124,9 @@ export class BrowserVoiceEngine implements IVoiceEngine {
       if (found) return found;
     }
 
-    // 3. Prefer non-default local English voice over hard-robotic fallback
-    const enUsVoice = candidates.find((v) => v.lang === 'en-US' || v.lang.startsWith('en-US'));
-    if (enUsVoice) return enUsVoice;
-
     const anyEnVoice = candidates.find((v) => v.lang.startsWith('en'));
     if (anyEnVoice) return anyEnVoice;
 
-    // 4. Default fallback
     return candidates[0] || null;
   }
 
@@ -135,12 +159,20 @@ export class BrowserVoiceEngine implements IVoiceEngine {
     try {
       const synth = window.speechSynthesis;
 
+      if (synth.paused) {
+        synth.resume();
+      }
+
       // Cancel any ongoing speech immediately before starting new utterance
       synth.cancel();
 
+      if (synth.paused) {
+        synth.resume();
+      }
+
       const utterance = new SpeechSynthesisUtterance(options.text);
 
-      const selectedVoice = this.selectBestVoice(this.getVoices(), options.voice);
+      const selectedVoice = this.selectBestVoice(this.getVoices(), options.voice, options.genderPreference);
       if (selectedVoice) {
         utterance.voice = selectedVoice;
       }
@@ -149,17 +181,37 @@ export class BrowserVoiceEngine implements IVoiceEngine {
       utterance.pitch = options.pitch ?? emotionParams.pitch;
       utterance.rate = options.speed ?? emotionParams.rate;
 
+      let heartbeatTimer: number | null = window.setInterval(() => {
+        if (synth.speaking) {
+          if (synth.paused) {
+            synth.resume();
+          }
+        } else {
+          if (heartbeatTimer) {
+            clearInterval(heartbeatTimer);
+            heartbeatTimer = null;
+          }
+        }
+      }, 4000);
+
       utterance.onstart = () => {
         options.onStart?.();
       };
 
       utterance.onend = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
         options.onEnd?.();
       };
 
       utterance.onerror = (event) => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
         if (event.error === 'interrupted' || event.error === 'canceled') {
-          // Intentionally cancelled or interrupted — do not treat as an error or trigger idle reset
           return;
         }
         console.warn('[BrowserVoiceEngine] Utterance error:', event);
@@ -167,6 +219,11 @@ export class BrowserVoiceEngine implements IVoiceEngine {
       };
 
       synth.speak(utterance);
+
+      if (synth.paused || synth.pending) {
+        synth.resume();
+      }
+
       return true;
     } catch (err) {
       console.error('[BrowserVoiceEngine] Exception starting speech:', err);

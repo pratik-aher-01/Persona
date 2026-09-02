@@ -23,45 +23,45 @@ export const DEFAULT_EXPRESSION_PROFILES: ExpressionProfileMap = {
   ],
 
   warm: [
-    { bindings: [{ name: 'happy', weight: 0.82 }] },
-    { bindings: [{ name: 'relaxed', weight: 0.68 }, { name: 'neutral', weight: 0.3 }] },
+    { bindings: [{ name: 'happy', weight: 0.90 }] },
+    { bindings: [{ name: 'relaxed', weight: 0.75 }, { name: 'neutral', weight: 0.25 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 
   skeptical: [
-    { bindings: [{ name: 'neutral', weight: 0.65 }, { name: 'angry', weight: 0.28 }] },
-    { bindings: [{ name: 'surprised', weight: 0.20 }, { name: 'neutral', weight: 0.70 }] },
+    { bindings: [{ name: 'angry', weight: 0.45 }, { name: 'neutral', weight: 0.55 }] },
+    { bindings: [{ name: 'surprised', weight: 0.30 }, { name: 'neutral', weight: 0.60 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 
   impressed: [
-    { bindings: [{ name: 'surprised', weight: 0.62 }, { name: 'happy', weight: 0.42 }] },
-    { bindings: [{ name: 'surprised', weight: 0.50 }] },
-    { bindings: [{ name: 'happy', weight: 0.60 }] },
+    { bindings: [{ name: 'surprised', weight: 0.75 }, { name: 'happy', weight: 0.55 }] },
+    { bindings: [{ name: 'surprised', weight: 0.70 }] },
+    { bindings: [{ name: 'happy', weight: 0.75 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 
   stern: [
-    { bindings: [{ name: 'angry', weight: 0.68 }] },
-    { bindings: [{ name: 'sad', weight: 0.42 }, { name: 'neutral', weight: 0.5 }] },
+    { bindings: [{ name: 'angry', weight: 0.85 }] },
+    { bindings: [{ name: 'sad', weight: 0.50 }, { name: 'neutral', weight: 0.5 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 
   concerned: [
-    { bindings: [{ name: 'sad', weight: 0.55 }, { name: 'surprised', weight: 0.20 }] },
-    { bindings: [{ name: 'sad', weight: 0.60 }] },
-    { bindings: [{ name: 'angry', weight: 0.30 }, { name: 'neutral', weight: 0.5 }] },
+    { bindings: [{ name: 'sad', weight: 0.75 }, { name: 'surprised', weight: 0.30 }] },
+    { bindings: [{ name: 'sad', weight: 0.80 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 
   surprised: [
-    { bindings: [{ name: 'surprised', weight: 0.85 }] },
-    { bindings: [{ name: 'happy', weight: 0.50 }] },
+    { bindings: [{ name: 'surprised', weight: 0.95 }] },
+    { bindings: [{ name: 'happy', weight: 0.60 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 
   thinking: [
-    { bindings: [{ name: 'neutral', weight: 0.70 }, { name: 'relaxed', weight: 0.30 }] },
+    { bindings: [{ name: 'relaxed', weight: 0.50 }, { name: 'neutral', weight: 0.50 }] },
+    { bindings: [{ name: 'sad', weight: 0.25 }, { name: 'neutral', weight: 0.75 }] },
     { bindings: [{ name: 'neutral', weight: 1.0 }] },
   ],
 };

@@ -51,7 +51,7 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
   private avatarScale = 1.0;
   private avatarX = 0;
   private avatarY = 0;
-  private avatarZ = 0;
+  private avatarZ = -0.1;
 
   private keyLightX = 5.0;
   private keyLightY = -1.1;
@@ -189,8 +189,8 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
 
     this.vrm = loadedVrm;
 
-    // Unnecessary joints optimization & orientation fix
-    VRMUtils.removeUnnecessaryJoints(this.vrm.scene);
+    // Combine skeleton meshes for performance (replaces deprecated removeUnnecessaryJoints)
+    VRMUtils.combineSkeletons(this.vrm.scene);
     VRMUtils.rotateVRM0(this.vrm);
 
     // Disable frustum culling to prevent model popping on frame edges

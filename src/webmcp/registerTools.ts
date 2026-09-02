@@ -271,3 +271,66 @@ export async function registerWebMcpTools(
     return { available: true, registered: false };
   }
 }
+
+/**
+ * Development Adapter: Allows the MockAgent test harness to execute registered WebMCP tools
+ * directly through the official WebMCP handlers without creating duplicate tool definitions.
+ */
+export async function executeRegisteredTool(
+  toolName: string,
+  args: Record<string, unknown> = {}
+): Promise<{ success: boolean; [key: string]: unknown }> {
+  // If modelContext exists on window/document, try standard executeTool first
+  const mc = ((document as unknown as { modelContext?: unknown }).modelContext ||
+    (window as unknown as { modelContext?: unknown }).modelContext) as {
+    getTools?: () => Promise<Array<{ name: string }>>;
+    executeTool?: (tool: unknown, input: string) => Promise<unknown>;
+  } | undefined;
+
+  if (mc && typeof mc.executeTool === 'function' && typeof mc.getTools === 'function') {
+    try {
+      const tools = await mc.getTools();
+      const targetTool = tools.find((t) => t.name === toolName);
+      if (targetTool) {
+        const res = await mc.executeTool(targetTool, JSON.stringify(args));
+        const parsed = typeof res === 'string' ? JSON.parse(res) : (res as Record<string, unknown>);
+        return { success: true, ...parsed };
+      }
+    } catch (e) {
+      console.warn('[WebMCP Adapter] Fallback to direct tool dispatcher:', e);
+    }
+  }
+
+  // Direct dispatcher mapping to active registered WebMCP handlers
+  switch (toolName) {
+    case 'speak': {
+      const text = String(args.text || '');
+      const emotion = (args.emotion as Emotion) || 'neutral';
+      if (activeOnSpeak) activeOnSpeak({ text, emotion });
+      return { success: true, message: `Virtual interviewer speaking with emotion ${emotion}`, text, emotion };
+    }
+    case 'get_user_transcript': {
+      const data = activeOnGetUserTranscript
+        ? activeOnGetUserTranscript()
+        : { transcript: '', hasNewInput: false, utteranceId: 0, isListening: false };
+      return { success: true, ...data };
+    }
+    case 'perform_gesture': {
+      const gesture = String(args.gesture || 'nod');
+      if (activeOnPerformGesture) activeOnPerformGesture(gesture);
+      return { success: true, gesture };
+    }
+    case 'set_expression': {
+      const expression = (args.expression as Emotion) || 'neutral';
+      if (activeOnSetExpression) activeOnSetExpression(expression);
+      return { success: true, expression };
+    }
+    case 'set_attention': {
+      const target = (args.target as 'user' | 'center' | 'away') || 'user';
+      if (activeOnSetAttention) activeOnSetAttention(target);
+      return { success: true, target };
+    }
+    default:
+      return { success: false, error: 'UnknownTool', message: `Tool ${toolName} not found` };
+  }
+}

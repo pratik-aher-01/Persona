@@ -4,6 +4,7 @@ export interface SpeakOptions {
   text: string;
   emotion: Emotion;
   voice?: SpeechSynthesisVoice | string | null;
+  genderPreference?: 'male' | 'female';
   speed?: number;
   pitch?: number;
   onStart?: () => void;

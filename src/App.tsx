@@ -7,6 +7,11 @@ import { voiceEngine } from './voice';
 import { isSpeechRecognitionSupported, SpeechRecognizer } from './utils/stt';
 import { PERSONAS, getPersonaById, type PersonaConfig } from './config/personas';
 import type { DemoState, Emotion, ThemeMode } from './types/persona';
+import { MockAgentConsole } from './dev/MockAgentConsole';
+import { conversationSessionInstance, type SessionState } from './session/ConversationSession';
+import { ConversationControls } from './components/ConversationControls';
+import { ConversationTranscript, type TranscriptTurn } from './components/ConversationTranscript';
+import { activeAgentAdapter } from './agent/ConversationAgent';
 import './App.css';
 
 export default function App() {
@@ -41,7 +46,16 @@ export default function App() {
   const [avatarApi, setAvatarApi] = useState<{ set: (c: object) => void; get: () => object } | null>(null);
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
+  const lastSpeakTimeRef = useRef<number>(0);
+  const isTTSActiveRef = useRef<boolean>(false);
   const stateRef = useRef(state);
+
+  const [sessionState, setSessionState] = useState<SessionState>('IDLE');
+  const [transcriptTurns, setTranscriptTurns] = useState<TranscriptTurn[]>([]);
+
+  useEffect(() => {
+    return conversationSessionInstance.subscribe((s) => setSessionState(s));
+  }, []);
 
   useEffect(() => {
     stateRef.current = state;
@@ -97,101 +111,114 @@ export default function App() {
     setIsPersonasDrawerOpen(false);
   };
 
-  const handleToggleListening = useCallback(() => {
-    setState((prev) => {
-      if (prev.isListening) {
-        if (recognizerRef.current) {
-          recognizerRef.current.stop();
-        }
-        return {
-          ...prev,
-          isListening: false,
-          interimTranscript: '',
-        };
-      }
+  const handleStartConversation = useCallback(() => {
+    conversationSessionInstance.startSession();
 
-      if (!isSpeechRecognitionSupported()) {
-        return {
-          ...prev,
-          micError: 'Speech Recognition API is unavailable in this browser.',
-        };
-      }
-
-      const recognizer = new SpeechRecognizer(
-        (interimText) => {
-          setState((p) => {
-            // Handle interruption: if user starts speaking while Persona is speaking, stop TTS
-            if (p.status === 'speaking') {
-              voiceEngine.stop();
-            }
-            return {
-              ...p,
-              status: 'listening',
-              interimTranscript: interimText,
-            };
-          });
-        },
-        (finalText) => {
-          setState((p) => {
-            const nextId = p.utteranceId + 1;
-            return {
-              ...p,
-              status: 'agent_processing',
-              userTranscript: p.userTranscript
-                ? `${p.userTranscript} ${finalText}`
-                : finalText,
-              pendingUserUtterance: finalText,
-              utteranceId: nextId,
-              interimTranscript: '',
-            };
-          });
-        },
-        (listening) => {
-          setState((p) => ({
-            ...p,
-            isListening: listening,
-            status: listening ? (p.status === 'speaking' ? 'speaking' : 'listening') : (p.status === 'speaking' ? 'speaking' : 'idle'),
-            ...(listening ? { micError: null } : { interimTranscript: '' }),
-          }));
-        },
-        (errorMsg) => {
-          setState((p) => ({
-            ...p,
-            micError: errorMsg,
-            isListening: false,
-            status: 'idle',
-            interimTranscript: '',
-          }));
-        },
-        () => {
-          // Speech Start callback — prompt interruption handling
-          if (stateRef.current.status === 'speaking') {
-            voiceEngine.stop();
-            setState((p) => ({
-              ...p,
-              status: 'listening',
-            }));
-          }
-        }
-      );
-
-      recognizerRef.current = recognizer;
-      const started = recognizer.start();
-
-      if (!started) {
-        return {
-          ...prev,
-          micError: 'Failed to start speech recognition.',
-          isListening: false,
-        };
-      }
-
-      return {
+    if (!isSpeechRecognitionSupported()) {
+      conversationSessionInstance.onMicError('Speech Recognition API is unavailable in this browser.');
+      setState((prev) => ({
         ...prev,
-        micError: null,
-      };
-    });
+        micError: 'Speech Recognition API is unavailable in this browser.',
+      }));
+      return;
+    }
+
+    if (recognizerRef.current) {
+      recognizerRef.current.stop();
+    }
+
+    const recognizer = new SpeechRecognizer(
+      (interimText) => {
+        if (isTTSActiveRef.current) return;
+        setState((p) => ({
+          ...p,
+          status: 'listening',
+          interimTranscript: interimText,
+        }));
+      },
+      (finalText) => {
+        if (isTTSActiveRef.current || !finalText.trim()) return;
+
+        const newTurn: TranscriptTurn = {
+          id: Math.random().toString(36).substring(2, 9),
+          role: 'user',
+          text: finalText,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        setTranscriptTurns((prev) => [...prev, newTurn]);
+
+        conversationSessionInstance.onUserSpeechCaptured(finalText);
+        setState((p) => ({
+          ...p,
+          status: 'agent_processing',
+          userTranscript: p.userTranscript ? `${p.userTranscript} ${finalText}` : finalText,
+          pendingUserUtterance: finalText,
+          utteranceId: p.utteranceId + 1,
+          interimTranscript: '',
+        }));
+
+        activeAgentAdapter.onUserSpeech(finalText);
+      },
+      (listening) => {
+        setState((p) => ({
+          ...p,
+          isListening: listening,
+          status: listening ? (p.status === 'speaking' ? 'speaking' : 'listening') : (p.status === 'speaking' ? 'speaking' : 'idle'),
+          ...(listening ? { micError: null } : { interimTranscript: '' }),
+        }));
+        if (listening) {
+          conversationSessionInstance.onMicGranted();
+        }
+      },
+      (errorMsg) => {
+        conversationSessionInstance.onMicError(errorMsg);
+        setState((p) => ({
+          ...p,
+          micError: errorMsg,
+          isListening: false,
+          status: 'idle',
+        }));
+      },
+      () => {
+        if (isTTSActiveRef.current) return;
+      }
+    );
+
+    recognizerRef.current = recognizer;
+    const started = recognizer.start();
+
+    if (!started) {
+      conversationSessionInstance.onMicError('Failed to start speech recognition.');
+      setState((prev) => ({
+        ...prev,
+        micError: 'Failed to start speech recognition.',
+        isListening: false,
+      }));
+    }
   }, []);
+
+  const handleStopConversation = useCallback(() => {
+    if (recognizerRef.current) {
+      recognizerRef.current.stop();
+    }
+    voiceEngine.stop();
+    isTTSActiveRef.current = false;
+    conversationSessionInstance.stopSession();
+    setState((prev) => ({
+      ...prev,
+      status: 'idle',
+      isListening: false,
+      interimTranscript: '',
+    }));
+  }, []);
+
+  const handleToggleListening = useCallback(() => {
+    if (conversationSessionInstance.isSessionActive()) {
+      handleStopConversation();
+    } else {
+      handleStartConversation();
+    }
+  }, [handleStartConversation, handleStopConversation]);
 
   const handleClearTranscript = useCallback(() => {
     setState((prev) => ({
@@ -201,9 +228,12 @@ export default function App() {
       utteranceId: 0,
       interimTranscript: '',
     }));
+    setTranscriptTurns([]);
   }, []);
 
   const handleSpeak = useCallback((text: string, emotion: Emotion, source: 'WebMCP' | 'Manual' = 'WebMCP') => {
+    lastSpeakTimeRef.current = Date.now();
+    isTTSActiveRef.current = true;
     if (recognizerRef.current) {
       recognizerRef.current.stop();
     }
@@ -225,18 +255,44 @@ export default function App() {
     const success = voiceEngine.speak({
       text,
       emotion,
+      genderPreference: selectedPersona.genderPreference,
       onStart: () => {
+        isTTSActiveRef.current = true;
+        conversationSessionInstance.onAgentSpeechStart(text);
+        setTranscriptTurns((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(2, 9),
+            role: 'persona',
+            text,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ]);
         setState((prev) => ({ ...prev, status: 'speaking', isListening: false }));
       },
       onEnd: () => {
+        isTTSActiveRef.current = false;
         setState((prev) => (prev.status === 'speaking' ? { ...prev, status: 'idle' } : prev));
+        conversationSessionInstance.onAgentSpeechEnd();
+
+        // Automatically resume listening if session is still active
+        if (conversationSessionInstance.isSessionActive() && recognizerRef.current) {
+          setTimeout(() => {
+            if (conversationSessionInstance.isSessionActive()) {
+              recognizerRef.current?.start();
+            }
+          }, 300);
+        }
       },
       onError: () => {
+        isTTSActiveRef.current = false;
         setState((prev) => (prev.status === 'speaking' ? { ...prev, status: 'idle' } : prev));
+        conversationSessionInstance.onAgentSpeechEnd();
       },
     });
 
     if (!success) {
+      isTTSActiveRef.current = false;
       setSpeechWarning('Speech synthesis unavailable in this browser.');
       setTimeout(() => {
         setState((prev) => (prev.status === 'speaking' ? { ...prev, status: 'idle' } : prev));
@@ -244,7 +300,7 @@ export default function App() {
     } else {
       setSpeechWarning(null);
     }
-  }, []);
+  }, [selectedPersona.genderPreference]);
 
   const handleResetIdle = () => {
     voiceEngine.stop();
@@ -344,12 +400,12 @@ export default function App() {
           <img src="/persona.png" alt="Persona Logo" className="brand-logo-img" />
           <div className="brand-text-group">
             <h1 className="brand-wordmark">PERSONA</h1>
-            <span className="brand-subtext">EMBODIED AGENT</span>
+            <span className="brand-subtext">EMBODIED WEBMCP AGENT</span>
           </div>
         </div>
 
         <div className="header-controls-right">
-          {/* DARK MODE TOGGLE */}
+          {/* DARK / LIGHT MODE TOGGLE */}
           <button
             type="button"
             className="btn-theme-toggle"
@@ -362,8 +418,8 @@ export default function App() {
 
           <div className={`connection-pill ${state.webMcpRegistered ? 'is-connected' : 'is-offline'}`}>
             <span className="status-dot">●</span>
-            <span className="status-text">{state.webMcpRegistered ? 'PERSONA • CONNECTED' : 'PERSONA • OFFLINE'}</span>
-            <span className="agent-badge">● AGENT</span>
+            <span className="status-text">{state.webMcpRegistered ? 'WEBMCP CONNECTED' : 'WEBMCP OFFLINE'}</span>
+            <span className="agent-badge">AGENTS ACTIVE</span>
           </div>
         </div>
       </header>
@@ -448,7 +504,10 @@ export default function App() {
                     >
                       <div className="item-left">
                         <span className="item-bullet">○</span>
-                        <span className="item-mode">{p.mode}</span>
+                        <div className="item-text-stack">
+                          <span className="item-mode">{p.mode}</span>
+                          {p.subtitle && <span className="item-sub">{p.subtitle}</span>}
+                        </div>
                       </div>
                       <span className="badge-coming-soon">SOON</span>
                     </button>
@@ -461,10 +520,6 @@ export default function App() {
 
         {/* CENTER — PERSONA HERO STAGE (DOMINANT AVATAR FOCUS) */}
         <section className="workspace-center-stage">
-          <div className="expression-header-badge">
-            EXPRESSION: {state.emotion.toUpperCase()}
-          </div>
-
           <div className="persona-avatar-hero-container">
             {selectedPersona.modelUrl ? (
               <PersonaAvatar
@@ -491,14 +546,25 @@ export default function App() {
               </div>
             )}
 
-            {/* CHAT RESPONSE BUBBLE (SHOWS ONLY WHEN AGENT TALKS, RESPONSIVELY POSITIONED) */}
+            {/* CHAT RESPONSE BUBBLE (POSITIONED SLIGHTLY DOWN & TO THE SIDE OF MODEL) */}
             {state.status === 'speaking' && (
               <div className="persona-response-bubble">
                 <div className="bubble-arrow-left" />
-                <div className="bubble-tag-header">PERSONA / SPEAKING</div>
+                <div className="bubble-tag-header">
+                  <span>PERSONA / SPEAKING</span>
+                  <span className="bubble-emotion-tag">{state.emotion.toUpperCase()}</span>
+                </div>
                 <p className="bubble-text-content">"{state.dialogue}"</p>
               </div>
             )}
+
+            {/* PRODUCTION CONVERSATION CONTROLS */}
+            <ConversationControls
+              sessionState={sessionState}
+              onStartSession={handleStartConversation}
+              onStopSession={handleStopConversation}
+              micError={state.micError}
+            />
           </div>
         </section>
 
@@ -623,18 +689,27 @@ export default function App() {
           )}
         </div>
 
-        <div className="footer-turn-status">
-          <span className="live-status-dot">
-            {state.status === 'speaking'
-              ? '● SPEAKING'
-              : state.status === 'listening'
-              ? '🔴 LISTENING'
-              : state.status === 'user_finished'
-              ? '✓ USER FINISHED'
-              : state.status === 'agent_processing'
-              ? '⚙ AGENT THINKING'
-              : '● IDLE'}
-          </span>
+        <div className="footer-right-group">
+          {/* EXPRESSION BADGE (MOVED FROM TOP TO BOTTOM FOOTER) */}
+          <div className="footer-expression-pill">
+            <span className="expression-pill-icon">🎭</span>
+            <span className="expression-pill-label">EXPRESSION:</span>
+            <span className="expression-pill-val">{state.emotion.toUpperCase()}</span>
+          </div>
+
+          <div className="footer-turn-status">
+            <span className={`live-status-dot status-${state.status}`}>
+              {state.status === 'speaking'
+                ? '● SPEAKING'
+                : state.status === 'listening'
+                ? '🔴 LISTENING'
+                : state.status === 'user_finished'
+                ? '✓ USER FINISHED'
+                : state.status === 'agent_processing'
+                ? '⚙ AGENT THINKING'
+                : '● IDLE'}
+            </span>
+          </div>
         </div>
       </footer>
 
@@ -662,6 +737,14 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* LIGHTWEIGHT CONVERSATION TRANSCRIPT OVERLAY */}
+      <ConversationTranscript turns={transcriptTurns} />
+
+      {/* DEV MOCK AGENT OVERLAY (Only enabled when VITE_ENABLE_MOCK_AGENT=true — never in production) */}
+      {import.meta.env.VITE_ENABLE_MOCK_AGENT === 'true' && (
+        <MockAgentConsole />
       )}
     </div>
   );

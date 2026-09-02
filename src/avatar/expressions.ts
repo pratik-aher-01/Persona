@@ -100,30 +100,32 @@ export class ExpressionController {
   public update(delta: number) {
     if (!this.adapter.isAttached()) return;
 
-    // ── 1. ORGANIC MOUTH MOTION ───────────────────────────────────────
+    // ── 1. DYNAMIC MULTI-VISEME LIP-SYNC ──────────────────────────────
     if (this.isSpeaking) {
-      // Three detuned oscillators beating against each other
-      this.mouthT1 += delta * 10.8; // primary syllable rate
-      this.mouthT2 += delta * 7.3;  // secondary envelope
-      this.mouthT3 += delta * 3.1;  // slow amplitude modulation
+      this.mouthT1 += delta * 12.0; // Syllable oscillation
+      this.mouthT2 += delta * 7.5;  // Secondary modulation
+      this.mouthT3 += delta * 3.5;  // Viseme morph selector
 
-      const primary  = Math.abs(Math.sin(this.mouthT1));
-      const envelope = Math.sin(this.mouthT2) * 0.5 + 0.5;
-      const slowMod  = Math.sin(this.mouthT3) * 0.3 + 0.7;
-      const rawMouth = primary * envelope * slowMod;
+      const primary = Math.abs(Math.sin(this.mouthT1));
+      const envelope = Math.sin(this.mouthT2) * 0.45 + 0.55;
+      const rawMouth = primary * envelope;
+      const targetMouth = 0.12 + rawMouth * 0.65;
 
-      // Clamp to realistic range: mouth doesn't close fully during speech
-      const targetMouth = 0.08 + rawMouth * 0.65;
-
-      // Smooth the mouth value so it doesn't snap
-      this.smoothMouth += (targetMouth - this.smoothMouth) * Math.min(1.0, delta * 18.0);
+      this.smoothMouth += (targetMouth - this.smoothMouth) * Math.min(1.0, delta * 20.0);
 
       const caps = this.adapter.getCapabilityMap();
-      if (caps.presetExpressions.has('aa')) {
-        this.adapter.setTargetWeight('aa', this.smoothMouth);
-      } else if (caps.presetExpressions.has('oh')) {
-        this.adapter.setTargetWeight('oh', this.smoothMouth);
-      } else if (caps.rawMorphTargets.has('Fcl_MTH_A')) {
+      const visemes: Array<'aa' | 'ih' | 'ou' | 'ee' | 'oh'> = ['aa', 'ih', 'ou', 'ee', 'oh'];
+      const cycleIndex = Math.floor((this.mouthT3 % (Math.PI * 2)) / ((Math.PI * 2) / visemes.length));
+      const activeViseme = visemes[cycleIndex % visemes.length];
+
+      for (const v of visemes) {
+        if (caps.presetExpressions.has(v)) {
+          const weight = (v === activeViseme) ? this.smoothMouth : (v === 'aa' ? this.smoothMouth * 0.3 : 0);
+          this.adapter.setTargetWeight(v, weight);
+        }
+      }
+
+      if (caps.rawMorphTargets.has('Fcl_MTH_A')) {
         this.adapter.setTargetWeight('Fcl_MTH_A', this.smoothMouth);
       }
     }

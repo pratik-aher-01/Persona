@@ -210,18 +210,19 @@ export class IdleController {
         microScale  = 1.0;
     }
 
-    // Breathing: two slightly detuned sines to avoid perfectly periodic wave
+    // Breathing: three slightly detuned sines to avoid periodic wave, scaled for natural visibility
     const t = this.idleTime;
-    const rawBreath = (Math.sin(t * 2.18 + this.breathPhase) * 0.7 +
-                       Math.sin(t * 2.67 + this.breathPhase * 1.3) * 0.3) * 0.006 * breathScale;
+    const rawBreath = (Math.sin(t * 1.85 + this.breathPhase) * 0.65 +
+                       Math.sin(t * 2.41 + this.breathPhase * 1.3) * 0.25 +
+                       Math.sin(t * 0.92 + this.breathPhase * 0.7) * 0.10) * 0.022 * breathScale;
 
     // Head sway: three frequencies so it never feels like a metronome
     const rawSwayY = (Math.sin(t * 1.27 + this.swayPhase) * 0.5 +
                       Math.sin(t * 0.83 + this.swayPhase * 0.7) * 0.3 +
-                      Math.sin(t * 2.11 + this.swayPhase * 1.5) * 0.2) * 0.004 * swayScale;
+                      Math.sin(t * 2.11 + this.swayPhase * 1.5) * 0.2) * 0.005 * swayScale;
 
     const rawSwayX = (Math.sin(t * 0.97 + this.microPhase) * 0.6 +
-                      Math.sin(t * 1.51 + this.microPhase * 1.2) * 0.4) * 0.003 * microScale;
+                      Math.sin(t * 1.51 + this.microPhase * 1.2) * 0.4) * 0.004 * microScale;
 
     // Smooth the raw values to prevent micro-jitter
     const smoothFactor = Math.min(1.0, delta * 6.0);
@@ -229,9 +230,7 @@ export class IdleController {
     this.smoothSwayY  += (rawSwayY  - this.smoothSwayY)  * smoothFactor;
     this.smoothSwayX  += (rawSwayX  - this.smoothSwayX)  * smoothFactor;
 
-    // ── 3. APPLY NATURAL ARM POSE (move arms out of T-pose) ─────────
-    // Blend speed: ~3.5 units/sec so arms reach natural position in ~0.5s on load
-    // This also means any frame-rate-related issues are gracefully handled.
+    // ── 3. APPLY NATURAL ARM POSE & GESTURE OFFSETS ─────────────────
     const poseBlend = Math.min(1.0, delta * 3.5);
 
     for (const boneName of Object.keys(NATURAL_POSE)) {
@@ -244,23 +243,41 @@ export class IdleController {
 
       const bone = this.vrm.humanoid.getNormalizedBoneNode(boneName as VRMHumanBoneName);
       if (bone) {
-        bone.rotation.x = current.x;
-        bone.rotation.y = current.y;
-        bone.rotation.z = current.z;
+        let addPitch = 0;
+        let addYaw = 0;
+        let addRoll = 0;
+
+        if (boneName === 'leftUpperArm') {
+          addPitch = this.gestureOffsets.leftUpperArmPitch || 0;
+          addYaw = this.gestureOffsets.leftUpperArmYaw || 0;
+          addRoll = this.gestureOffsets.leftUpperArmRoll || 0;
+        } else if (boneName === 'rightUpperArm') {
+          addPitch = this.gestureOffsets.rightUpperArmPitch || 0;
+          addYaw = this.gestureOffsets.rightUpperArmYaw || 0;
+          addRoll = this.gestureOffsets.rightUpperArmRoll || 0;
+        } else if (boneName === 'leftLowerArm') {
+          addPitch = this.gestureOffsets.leftLowerArmPitch || 0;
+        } else if (boneName === 'rightLowerArm') {
+          addPitch = this.gestureOffsets.rightLowerArmPitch || 0;
+        }
+
+        bone.rotation.x = current.x + addPitch;
+        bone.rotation.y = current.y + addYaw;
+        bone.rotation.z = current.z + addRoll;
       }
     }
 
     // ── 4. APPLY SPINE & CHEST ──────────────────────────────────────
     const spine = this.vrm.humanoid.getNormalizedBoneNode('spine');
     if (spine) {
-      spine.rotation.x = this.baseSpineX + this.smoothBreath + this.gestureOffsets.spinePitch;
+      spine.rotation.x = this.baseSpineX + this.smoothBreath * 0.6 + this.gestureOffsets.spinePitch;
       spine.rotation.y = this.gestureOffsets.spineYaw;
       spine.rotation.z = this.gestureOffsets.spineRoll;
     }
 
     const chest = this.vrm.humanoid.getNormalizedBoneNode('chest');
     if (chest) {
-      chest.rotation.x = this.gestureOffsets.chestPitch;
+      chest.rotation.x = this.smoothBreath * 0.4 + this.gestureOffsets.chestPitch;
       chest.rotation.y = this.gestureOffsets.chestYaw;
       chest.rotation.z = this.gestureOffsets.chestRoll;
     }

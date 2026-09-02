@@ -10,7 +10,14 @@ export type GestureName =
   | 'disagree'
   | 'thinking'
   | 'lean_forward'
-  | 'lean_back';
+  | 'lean_back'
+  | 'subtle_hand_open'
+  | 'explain_hand'
+  | 'small_hand_raise'
+  | 'hand_emphasis'
+  | 'hands_together'
+  | 'thoughtful_hand'
+  | 'welcoming_hand';
 
 export interface GestureOffsets {
   headPitch: number;
@@ -25,6 +32,16 @@ export interface GestureOffsets {
   chestPitch: number;
   chestYaw: number;
   chestRoll: number;
+  leftUpperArmPitch?: number;
+  leftUpperArmYaw?: number;
+  leftUpperArmRoll?: number;
+  rightUpperArmPitch?: number;
+  rightUpperArmYaw?: number;
+  rightUpperArmRoll?: number;
+  leftLowerArmPitch?: number;
+  rightLowerArmPitch?: number;
+  leftHandPitch?: number;
+  rightHandPitch?: number;
 }
 
 export interface GesturePhase extends Partial<GestureOffsets> {
@@ -50,6 +67,16 @@ const ZERO_OFFSETS: GestureOffsets = {
   chestPitch: 0,
   chestYaw: 0,
   chestRoll: 0,
+  leftUpperArmPitch: 0,
+  leftUpperArmYaw: 0,
+  leftUpperArmRoll: 0,
+  rightUpperArmPitch: 0,
+  rightUpperArmYaw: 0,
+  rightUpperArmRoll: 0,
+  leftLowerArmPitch: 0,
+  rightLowerArmPitch: 0,
+  leftHandPitch: 0,
+  rightHandPitch: 0,
 };
 
 const GESTURE_LIBRARY: Record<Exclude<GestureName, 'idle'>, GestureConfig> = {
@@ -118,14 +145,14 @@ const GESTURE_LIBRARY: Record<Exclude<GestureName, 'idle'>, GestureConfig> = {
     ],
   },
 
-  // Thinking posture: subtle tilt, chin down, chest lean
+  // Thinking posture: subtle tilt, chin down, chest lean, hand toward chin
   thinking: {
     duration: 2.2,
     priority: 1,
     phases: [
-      { ratio: 0.25, headPitch: 0.06, headYaw: -0.08, headRoll: 0.08, spinePitch: 0.04, chestPitch: 0.03 },
-      { ratio: 0.50, headPitch: 0.06, headYaw: -0.08, headRoll: 0.08, spinePitch: 0.04, chestPitch: 0.03 },
-      { ratio: 0.25, headPitch: 0.0, headYaw: 0.0, headRoll: 0.0, spinePitch: 0.0, chestPitch: 0.0 },
+      { ratio: 0.25, headPitch: 0.08, headYaw: -0.10, headRoll: 0.08, spinePitch: 0.04, rightUpperArmRoll: -0.3, rightLowerArmPitch: 0.4 },
+      { ratio: 0.50, headPitch: 0.08, headYaw: -0.10, headRoll: 0.08, spinePitch: 0.04, rightUpperArmRoll: -0.3, rightLowerArmPitch: 0.4 },
+      { ratio: 0.25, headPitch: 0.0, headYaw: 0.0, headRoll: 0.0, spinePitch: 0.0, rightUpperArmRoll: 0.0, rightLowerArmPitch: 0.0 },
     ],
   },
 
@@ -148,6 +175,77 @@ const GESTURE_LIBRARY: Record<Exclude<GestureName, 'idle'>, GestureConfig> = {
       { ratio: 0.30, spinePitch: -0.08, chestPitch: -0.06, headPitch: 0.03 },
       { ratio: 0.45, spinePitch: -0.08, chestPitch: -0.06, headPitch: 0.03 },
       { ratio: 0.25, spinePitch: 0.0, chestPitch: 0.0, headPitch: 0.0 },
+    ],
+  },
+
+  // Semantic Hand Gestures (3A)
+  subtle_hand_open: {
+    duration: 1.4,
+    priority: 1,
+    phases: [
+      { ratio: 0.35, rightUpperArmRoll: -0.25, rightLowerArmPitch: 0.3, spinePitch: 0.02 },
+      { ratio: 0.35, rightUpperArmRoll: -0.25, rightLowerArmPitch: 0.3, spinePitch: 0.02 },
+      { ratio: 0.30, rightUpperArmRoll: 0.0, rightLowerArmPitch: 0.0, spinePitch: 0.0 },
+    ],
+  },
+
+  explain_hand: {
+    duration: 1.8,
+    priority: 1,
+    phases: [
+      { ratio: 0.30, rightUpperArmRoll: -0.35, rightLowerArmPitch: 0.45, spinePitch: 0.04, headRoll: 0.05 },
+      { ratio: 0.40, rightUpperArmRoll: -0.20, rightLowerArmPitch: 0.25, spinePitch: 0.02 },
+      { ratio: 0.30, rightUpperArmRoll: 0.0, rightLowerArmPitch: 0.0, spinePitch: 0.0 },
+    ],
+  },
+
+  small_hand_raise: {
+    duration: 1.5,
+    priority: 1,
+    phases: [
+      { ratio: 0.35, leftUpperArmRoll: 0.30, leftLowerArmPitch: 0.35, headPitch: -0.02 },
+      { ratio: 0.35, leftUpperArmRoll: 0.30, leftLowerArmPitch: 0.35 },
+      { ratio: 0.30, leftUpperArmRoll: 0.0, leftLowerArmPitch: 0.0 },
+    ],
+  },
+
+  hand_emphasis: {
+    duration: 1.2,
+    priority: 2,
+    phases: [
+      { ratio: 0.35, rightUpperArmRoll: -0.30, rightLowerArmPitch: 0.50, headPitch: 0.06 },
+      { ratio: 0.35, rightUpperArmRoll: -0.10, rightLowerArmPitch: 0.20, headPitch: 0.0 },
+      { ratio: 0.30, rightUpperArmRoll: 0.0, rightLowerArmPitch: 0.0 },
+    ],
+  },
+
+  hands_together: {
+    duration: 2.0,
+    priority: 1,
+    phases: [
+      { ratio: 0.30, leftUpperArmRoll: 0.25, rightUpperArmRoll: -0.25, leftLowerArmPitch: 0.3, rightLowerArmPitch: 0.3, spinePitch: 0.03 },
+      { ratio: 0.45, leftUpperArmRoll: 0.25, rightUpperArmRoll: -0.25, leftLowerArmPitch: 0.3, rightLowerArmPitch: 0.3, spinePitch: 0.03 },
+      { ratio: 0.25, leftUpperArmRoll: 0.0, rightUpperArmRoll: 0.0, leftLowerArmPitch: 0.0, rightLowerArmPitch: 0.0, spinePitch: 0.0 },
+    ],
+  },
+
+  thoughtful_hand: {
+    duration: 2.2,
+    priority: 1,
+    phases: [
+      { ratio: 0.25, rightUpperArmRoll: -0.35, rightLowerArmPitch: 0.50, headRoll: 0.08, headPitch: 0.06 },
+      { ratio: 0.50, rightUpperArmRoll: -0.35, rightLowerArmPitch: 0.50, headRoll: 0.08, headPitch: 0.06 },
+      { ratio: 0.25, rightUpperArmRoll: 0.0, rightLowerArmPitch: 0.0, headRoll: 0.0, headPitch: 0.0 },
+    ],
+  },
+
+  welcoming_hand: {
+    duration: 1.8,
+    priority: 1,
+    phases: [
+      { ratio: 0.35, leftUpperArmRoll: 0.30, rightUpperArmRoll: -0.30, leftLowerArmPitch: 0.25, rightLowerArmPitch: 0.25, spinePitch: 0.04 },
+      { ratio: 0.35, leftUpperArmRoll: 0.30, rightUpperArmRoll: -0.30, leftLowerArmPitch: 0.25, rightLowerArmPitch: 0.25, spinePitch: 0.04 },
+      { ratio: 0.30, leftUpperArmRoll: 0.0, rightUpperArmRoll: 0.0, leftLowerArmPitch: 0.0, rightLowerArmPitch: 0.0, spinePitch: 0.0 },
     ],
   },
 };
@@ -243,7 +341,8 @@ export class GestureController {
       // Blend current offsets back to zero smoothly
       const blendOut = Math.min(1.0, delta * 8.0);
       for (const key of Object.keys(ZERO_OFFSETS) as (keyof GestureOffsets)[]) {
-        this.currentOffsets[key] += (0 - this.currentOffsets[key]) * blendOut;
+        const cur = this.currentOffsets[key] ?? 0;
+        this.currentOffsets[key] = cur + (0 - cur) * blendOut;
       }
       return { ...this.currentOffsets };
     }
@@ -278,7 +377,8 @@ export class GestureController {
       const targetVal = targetPhase[key] ?? 0;
       const interpolated = prevVal + (targetVal - prevVal) * phaseProgress;
 
-      this.currentOffsets[key] += (interpolated - this.currentOffsets[key]) * blendSpeed;
+      const cur = this.currentOffsets[key] ?? 0;
+      this.currentOffsets[key] = cur + (interpolated - cur) * blendSpeed;
     }
 
     // Check gesture completion
