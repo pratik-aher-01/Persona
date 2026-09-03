@@ -1420,3 +1420,419 @@ body, html {
 
 .mc-debug-key { color: var(--text-muted); }
 .mc-debug-val { color: var(--text-main); font-weight: 700; }
+
+/* AGENT MISSION & RESULT CARD STYLES */
+.agent-mission-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background-color: var(--panel-card-bg);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.mission-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.mission-title-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--accent-blue);
+  text-transform: uppercase;
+}
+
+.mission-main-title {
+  margin: 2px 0 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.btn-clear-mission {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-mission:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.mission-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.progress-track {
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* TASKS LIST */
+.mission-tasks-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tasks-count-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.mission-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 12px;
+  background-color: var(--canvas-bg);
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+}
+
+.empty-icon {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.empty-text {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tasks-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.task-item-card {
+  padding: 10px 12px;
+  background-color: var(--canvas-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.task-item-card.status-in_progress {
+  border-left: 4px solid #3b82f6;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.task-item-card.status-completed {
+  border-left: 4px solid #10b981;
+  opacity: 0.85;
+}
+
+.task-item-card.status-cancelled {
+  border-left: 4px solid #ef4444;
+  opacity: 0.6;
+}
+
+.task-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.status-icon {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.status-icon.icon-completed { color: #10b981; }
+.status-icon.icon-progress { color: #3b82f6; }
+.status-icon.icon-cancelled { color: #ef4444; }
+.status-icon.icon-pending { color: var(--text-muted); }
+
+.task-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.task-title.is-completed {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-description {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.priority-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.priority-high { background-color: #fee2e2; color: #b91c1c; }
+.priority-medium { background-color: #fef3c7; color: #b45309; }
+.priority-low { background-color: #e0f2fe; color: #0369a1; }
+
+/* RESULT CARD */
+.result-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background-color: var(--canvas-bg);
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.result-card-container.badge-success { border-left: 4px solid #10b981; }
+.result-card-container.badge-warning { border-left: 4px solid #f59e0b; }
+.result-card-container.badge-error { border-left: 4px solid #ef4444; }
+.result-card-container.badge-info { border-left: 4px solid #3b82f6; }
+
+.result-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.result-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-tag-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent-blue);
+  letter-spacing: 1px;
+}
+
+.result-type-pill {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.result-dismiss-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.result-card-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.result-card-summary p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+.result-card-data-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.data-block-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.result-json-view {
+  margin: 0;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.result-card-footer {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* AGENT BEHAVIORAL STATE CARD STYLES */
+.agent-state-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: var(--panel-card-bg);
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.state-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.state-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.behavior-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: #FFFFFF;
+}
+
+.behavior-pill.state-responding { background-color: #10b981; }
+.behavior-pill.state-thinking { background-color: #f59e0b; }
+.behavior-pill.state-executing { background-color: #8b5cf6; }
+.behavior-pill.state-completed { background-color: #06b6d4; }
+.behavior-pill.state-listening { background-color: #3b82f6; }
+.behavior-pill.state-waiting { background-color: #6b7280; }
+
+.mood-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.state-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.attention-bar-wrapper {
+  flex: 1;
+  height: 6px;
+  background-color: var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.attention-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+.state-action-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.action-bullet {
+  color: var(--accent-blue);
+  font-weight: 800;
+}
+
+.action-text {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+

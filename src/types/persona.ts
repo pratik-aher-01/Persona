@@ -48,8 +48,21 @@ export interface VrmTuningConfig {
   };
 }
 
+export type AgentBehavioralState = 
+  | 'LISTENING' 
+  | 'THINKING' 
+  | 'PLANNING' 
+  | 'EXECUTING' 
+  | 'EVALUATING' 
+  | 'WAITING' 
+  | 'RESPONDING' 
+  | 'COMPLETED';
+
 export interface DemoState {
   status: AvatarStatus;
+  behavioralState: AgentBehavioralState;
+  attentionPercentage: number;
+  behavioralAction: string;
   emotion: Emotion;
   dialogue: string;
   lastToolCall: ToolCallRecord | null;

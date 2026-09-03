@@ -50,9 +50,16 @@ export class ExpressionController {
     this.applyEmotion(this.currentEmotion);
   }
 
+  private audioAmplitude = 0;
+
+  public setAudioAmplitude(amplitude: number) {
+    this.audioAmplitude = Math.max(0, Math.min(1.0, amplitude));
+  }
+
   public setSpeaking(speaking: boolean) {
     this.isSpeaking = speaking;
     if (!speaking) {
+      this.audioAmplitude = 0;
       // Reset mouth shape targets smoothly to zero
       this.adapter.setTargetWeight('aa', 0);
       this.adapter.setTargetWeight('ih', 0);
@@ -100,7 +107,7 @@ export class ExpressionController {
   public update(delta: number) {
     if (!this.adapter.isAttached()) return;
 
-    // ── 1. DYNAMIC MULTI-VISEME LIP-SYNC ──────────────────────────────
+    // ── 1. DYNAMIC MULTI-VISEME LIP-SYNC WITH AUDIO AMPLITUDE ────────
     if (this.isSpeaking) {
       this.mouthT1 += delta * 12.0; // Syllable oscillation
       this.mouthT2 += delta * 7.5;  // Secondary modulation
@@ -109,7 +116,10 @@ export class ExpressionController {
       const primary = Math.abs(Math.sin(this.mouthT1));
       const envelope = Math.sin(this.mouthT2) * 0.45 + 0.55;
       const rawMouth = primary * envelope;
-      const targetMouth = 0.12 + rawMouth * 0.65;
+
+      // Combine oscillator with audio amplitude envelope when available
+      const ampMod = this.audioAmplitude > 0 ? (0.3 + this.audioAmplitude * 0.7) : 1.0;
+      const targetMouth = (0.12 + rawMouth * 0.65) * ampMod;
 
       this.smoothMouth += (targetMouth - this.smoothMouth) * Math.min(1.0, delta * 20.0);
 

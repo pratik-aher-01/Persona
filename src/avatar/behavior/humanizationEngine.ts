@@ -3,12 +3,14 @@ import type { AvatarActivity, PersonaEmotion } from '../avatarTypes';
 import type { ExpressionController } from '../expressions';
 import type { GestureController, GestureName } from '../animation/gestures';
 import type { GazeController } from '../gaze';
+import { MicroReactionEngine, type MicroReactionType } from './microReactions';
 
 export class HumanizationEngine {
   private vrm: VRM | null = null;
   private expressions: ExpressionController;
   private gestures: GestureController;
   private gaze: GazeController;
+  private microReactions: MicroReactionEngine;
 
   private currentActivity: AvatarActivity = 'idle';
 
@@ -36,8 +38,21 @@ export class HumanizationEngine {
     this.expressions = expressions;
     this.gestures = gestures;
     this.gaze = gaze;
+    this.microReactions = new MicroReactionEngine(expressions, gaze, gestures);
     this.scheduleNextListeningNod();
     this.scheduleNextIdleMicro();
+  }
+
+  public triggerMicroReaction(type: MicroReactionType): void {
+    this.microReactions.trigger(type);
+  }
+
+  public onInterruptionRecoil(): void {
+    // When user interrupts while avatar is speaking
+    this.expressions.setSpeaking(false);
+    this.microReactions.trigger('surprised');
+    this.gaze.lookAtUser();
+    this.setActivity('listening');
   }
 
   public attach(vrm: VRM) {

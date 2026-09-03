@@ -1,4 +1,6 @@
 import type { Emotion } from '../types/persona';
+import { taskStore } from '../tasks/taskStore';
+import type { TaskPriority, TaskStatus, ResultType } from '../tasks/taskTypes';
 
 export interface SpeakArgs {
   text: string;
@@ -40,9 +42,9 @@ export async function registerWebMcpTools(
   }
 
   // Safe check across possible injection points
-  const docMC = (document as unknown as { modelContext?: WebMCP.ModelContext }).modelContext;
-  const navMC = (navigator as unknown as { modelContext?: WebMCP.ModelContext }).modelContext;
-  const winMC = (window as unknown as { modelContext?: WebMCP.ModelContext }).modelContext;
+  const docMC = typeof document !== 'undefined' ? (document as unknown as { modelContext?: WebMCP.ModelContext }).modelContext : undefined;
+  const navMC = typeof navigator !== 'undefined' ? (navigator as unknown as { modelContext?: WebMCP.ModelContext }).modelContext : undefined;
+  const winMC = typeof window !== 'undefined' ? (window as unknown as { modelContext?: WebMCP.ModelContext }).modelContext : undefined;
   
   const modelContext = docMC || navMC || winMC;
 
@@ -248,16 +250,219 @@ export async function registerWebMcpTools(
       }
     };
 
+    const createTaskTool: WebMCP.ModelContextTool = {
+      name: 'create_task',
+      title: 'Create Task',
+      description: 'Create a new actionable task item within the current agent mission.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'The title or short summary of the task.'
+          },
+          description: {
+            type: 'string',
+            description: 'Detailed instructions or details for the task.'
+          },
+          priority: {
+            type: 'string',
+            enum: ['low', 'medium', 'high'],
+            description: 'Task priority level (defaults to medium).'
+          }
+        },
+        required: ['title']
+      },
+      execute: (inputObject: Record<string, unknown>) => {
+        const title = typeof inputObject.title === 'string' ? inputObject.title : String(inputObject.title || '');
+        if (!title.trim()) {
+          return { success: false, error: 'MissingTitle', message: 'Task title is required.' };
+        }
+        const description = typeof inputObject.description === 'string' ? inputObject.description : undefined;
+        const rawPriority = typeof inputObject.priority === 'string' ? inputObject.priority : 'medium';
+        const priority: TaskPriority = ['low', 'medium', 'high'].includes(rawPriority) ? (rawPriority as TaskPriority) : 'medium';
+
+        console.log(`[WebMCP] create_task() -> "${title}" (${priority})`);
+        const task = taskStore.createTask(title, description, priority);
+        return { success: true, task };
+      }
+    };
+
+    const updateTaskTool: WebMCP.ModelContextTool = {
+      name: 'update_task',
+      title: 'Update Task',
+      description: 'Update an existing mission task when requirements, priority, description, or execution status change.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          taskId: {
+            type: 'string',
+            description: 'The unique ID of the task to update.'
+          },
+          title: {
+            type: 'string',
+            description: 'Updated title for the task.'
+          },
+          description: {
+            type: 'string',
+            description: 'Updated description for the task.'
+          },
+          priority: {
+            type: 'string',
+            enum: ['low', 'medium', 'high'],
+            description: 'Updated task priority.'
+          },
+          status: {
+            type: 'string',
+            enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+            description: 'Updated execution status.'
+          }
+        },
+        required: ['taskId']
+      },
+      execute: (inputObject: Record<string, unknown>) => {
+        const taskId = typeof inputObject.taskId === 'string' ? inputObject.taskId : String(inputObject.taskId || '');
+        if (!taskId.trim()) {
+          return { success: false, error: 'MissingTaskId', message: 'taskId is required.' };
+        }
+        const title = typeof inputObject.title === 'string' ? inputObject.title : undefined;
+        const description = typeof inputObject.description === 'string' ? inputObject.description : undefined;
+        
+        const rawPriority = typeof inputObject.priority === 'string' ? inputObject.priority : undefined;
+        const priority: TaskPriority | undefined = rawPriority && ['low', 'medium', 'high'].includes(rawPriority) ? (rawPriority as TaskPriority) : undefined;
+
+        const rawStatus = typeof inputObject.status === 'string' ? inputObject.status : undefined;
+        const status: TaskStatus | undefined = rawStatus && ['pending', 'in_progress', 'completed', 'cancelled'].includes(rawStatus) ? (rawStatus as TaskStatus) : undefined;
+
+        console.log(`[WebMCP] update_task() -> ${taskId}`);
+        const res = taskStore.updateTask(taskId, {
+          ...(title !== undefined && { title }),
+          ...(description !== undefined && { description }),
+          ...(priority !== undefined && { priority }),
+          ...(status !== undefined && { status }),
+        });
+
+        if (!res.success) {
+          return { success: false, error: 'TaskNotFound', message: res.error || 'Task not found' };
+        }
+        return { success: true, task: res.task };
+      }
+    };
+
+    const getTasksTool: WebMCP.ModelContextTool = {
+      name: 'get_tasks',
+      title: 'Get Tasks',
+      description: 'Retrieve the current mission tasks, optionally filtered by status ("all", "pending", "in_progress", "completed", "cancelled").',
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          statusFilter: {
+            type: 'string',
+            enum: ['all', 'pending', 'in_progress', 'completed', 'cancelled'],
+            description: 'Filter tasks by status. Defaults to all.'
+          }
+        }
+      },
+      execute: (inputObject: Record<string, unknown>) => {
+        const rawFilter = typeof inputObject.statusFilter === 'string' ? inputObject.statusFilter : 'all';
+        const filter = ['all', 'pending', 'in_progress', 'completed', 'cancelled'].includes(rawFilter)
+          ? (rawFilter as TaskStatus | 'all')
+          : 'all';
+
+        const tasks = taskStore.getTasks(filter);
+        console.log(`[WebMCP] get_tasks(${filter}) -> ${tasks.length} tasks`);
+        return { success: true, tasks, count: tasks.length };
+      }
+    };
+
+    const completeTaskTool: WebMCP.ModelContextTool = {
+      name: 'complete_task',
+      title: 'Complete Task',
+      description: 'Mark a specific mission task as completed.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          taskId: {
+            type: 'string',
+            description: 'The unique ID of the task to mark completed.'
+          }
+        },
+        required: ['taskId']
+      },
+      execute: (inputObject: Record<string, unknown>) => {
+        const taskId = typeof inputObject.taskId === 'string' ? inputObject.taskId : String(inputObject.taskId || '');
+        if (!taskId.trim()) {
+          return { success: false, error: 'MissingTaskId', message: 'taskId is required.' };
+        }
+
+        console.log(`[WebMCP] complete_task(${taskId})`);
+        const res = taskStore.completeTask(taskId);
+        if (!res.success) {
+          return { success: false, error: 'TaskNotFound', message: res.error || 'Task not found' };
+        }
+        return { success: true, task: res.task };
+      }
+    };
+
+    const showResultTool: WebMCP.ModelContextTool = {
+      name: 'show_result',
+      title: 'Show Result',
+      description: 'Present the final structured outcome/result card of completed agent work to the human user.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'Heading title for the result summary card.'
+          },
+          summary: {
+            type: 'string',
+            description: 'Comprehensive narrative summary of accomplishments or findings.'
+          },
+          data: {
+            type: 'object',
+            description: 'Optional structured JSON data key-value pairs.'
+          },
+          type: {
+            type: 'string',
+            enum: ['info', 'success', 'warning', 'error'],
+            description: 'Result card alert tone (defaults to info).'
+          }
+        },
+        required: ['title', 'summary']
+      },
+      execute: (inputObject: Record<string, unknown>) => {
+        const title = typeof inputObject.title === 'string' ? inputObject.title : String(inputObject.title || '');
+        const summary = typeof inputObject.summary === 'string' ? inputObject.summary : String(inputObject.summary || '');
+        if (!title.trim() || !summary.trim()) {
+          return { success: false, error: 'InvalidResult', message: 'Title and summary are required.' };
+        }
+        const data = typeof inputObject.data === 'object' && inputObject.data !== null ? (inputObject.data as Record<string, unknown>) : undefined;
+        const rawType = typeof inputObject.type === 'string' ? inputObject.type : 'info';
+        const type: ResultType = ['info', 'success', 'warning', 'error'].includes(rawType) ? (rawType as ResultType) : 'info';
+
+        console.log(`[WebMCP] show_result() -> "${title}"`);
+        const resultObj = taskStore.showResult(title, summary, data, type);
+        return { success: true, resultId: resultObj.resultId };
+      }
+    };
+
     await modelContext.registerTool(speakTool);
     await modelContext.registerTool(getUserTranscriptTool);
     await modelContext.registerTool(performGestureTool);
     await modelContext.registerTool(setExpressionTool);
     await modelContext.registerTool(setAttentionTool);
+    await modelContext.registerTool(createTaskTool);
+    await modelContext.registerTool(updateTaskTool);
+    await modelContext.registerTool(getTasksTool);
+    await modelContext.registerTool(completeTaskTool);
+    await modelContext.registerTool(showResultTool);
 
     isRegistered = true;
     isRegistering = false;
 
-    console.log('[WebMCP] 5 Tools ("speak", "get_user_transcript", "perform_gesture", "set_expression", "set_attention") registered successfully.');
+    console.log('[WebMCP] 10 Tools ("speak", "get_user_transcript", "perform_gesture", "set_expression", "set_attention", "create_task", "update_task", "get_tasks", "complete_task", "show_result") registered successfully.');
     return { available: true, registered: true };
   } catch (err) {
     isRegistering = false;
@@ -281,8 +486,9 @@ export async function executeRegisteredTool(
   args: Record<string, unknown> = {}
 ): Promise<{ success: boolean; [key: string]: unknown }> {
   // If modelContext exists on window/document, try standard executeTool first
-  const mc = ((document as unknown as { modelContext?: unknown }).modelContext ||
-    (window as unknown as { modelContext?: unknown }).modelContext) as {
+  const docMC = typeof document !== 'undefined' ? (document as unknown as { modelContext?: unknown }).modelContext : undefined;
+  const winMC = typeof window !== 'undefined' ? (window as unknown as { modelContext?: unknown }).modelContext : undefined;
+  const mc = (docMC || winMC) as {
     getTools?: () => Promise<Array<{ name: string }>>;
     executeTool?: (tool: unknown, input: string) => Promise<unknown>;
   } | undefined;
@@ -330,7 +536,44 @@ export async function executeRegisteredTool(
       if (activeOnSetAttention) activeOnSetAttention(target);
       return { success: true, target };
     }
+    case 'create_task': {
+      const title = String(args.title || '');
+      const description = typeof args.description === 'string' ? args.description : undefined;
+      const priority = (args.priority as TaskPriority) || 'medium';
+      const task = taskStore.createTask(title, description, priority);
+      return { success: true, task };
+    }
+    case 'update_task': {
+      const taskId = String(args.taskId || '');
+      const res = taskStore.updateTask(taskId, args as Partial<Pick<import('../tasks/taskTypes').TaskItem, 'title' | 'description' | 'priority' | 'status'>>);
+      if (!res.success) {
+        return { success: false, error: 'TaskNotFound', message: res.error || 'Task not found' };
+      }
+      return { success: true, task: res.task };
+    }
+    case 'get_tasks': {
+      const filter = (args.statusFilter as TaskStatus | 'all') || 'all';
+      const tasks = taskStore.getTasks(filter);
+      return { success: true, tasks, count: tasks.length };
+    }
+    case 'complete_task': {
+      const taskId = String(args.taskId || '');
+      const res = taskStore.completeTask(taskId);
+      if (!res.success) {
+        return { success: false, error: 'TaskNotFound', message: res.error || 'Task not found' };
+      }
+      return { success: true, task: res.task };
+    }
+    case 'show_result': {
+      const title = String(args.title || '');
+      const summary = String(args.summary || '');
+      const data = typeof args.data === 'object' && args.data !== null ? (args.data as Record<string, unknown>) : undefined;
+      const type = (args.type as ResultType) || 'info';
+      const resultObj = taskStore.showResult(title, summary, data, type);
+      return { success: true, resultId: resultObj.resultId };
+    }
     default:
       return { success: false, error: 'UnknownTool', message: `Tool ${toolName} not found` };
   }
 }
+

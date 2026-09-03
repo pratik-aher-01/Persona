@@ -133,6 +133,17 @@ export class GazeController {
     return this.smoothedTarget.clone();
   }
 
+  public getAttentionPercentage(): number {
+    const distToUser = this.smoothedTarget.distanceTo(this.cameraPosition);
+    if (distToUser < 0.15) {
+      return 92 + Math.floor(Math.sin(this.wanderTime * 1.5) * 5);
+    } else if (distToUser < 0.4) {
+      return 82 + Math.floor(Math.sin(this.wanderTime * 1.5) * 4);
+    } else {
+      return 68 + Math.floor(Math.cos(this.wanderTime * 1.2) * 5);
+    }
+  }
+
   public update(delta: number) {
     if (!this.vrm || !this.vrm.lookAt) return;
 

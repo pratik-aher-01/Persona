@@ -12,11 +12,15 @@ import { conversationSessionInstance, type SessionState } from './session/Conver
 import { ConversationControls } from './components/ConversationControls';
 import { ConversationTranscript, type TranscriptTurn } from './components/ConversationTranscript';
 import { activeAgentAdapter } from './agent/ConversationAgent';
+import { AgentMissionPanel } from './components/AgentMissionPanel';
 import './App.css';
 
 export default function App() {
   const [state, setState] = useState<DemoState>({
     status: 'idle',
+    behavioralState: 'WAITING',
+    attentionPercentage: 90,
+    behavioralAction: 'Awaiting agent tool call or user input...',
     emotion: 'neutral',
     dialogue: 'Welcome to Persona. Awaiting agent or manual tool call...',
     lastToolCall: null,
@@ -129,7 +133,10 @@ export default function App() {
 
     const recognizer = new SpeechRecognizer(
       (interimText) => {
-        if (isTTSActiveRef.current) return;
+        if (isTTSActiveRef.current) {
+          voiceEngine.stop();
+          isTTSActiveRef.current = false;
+        }
         setState((p) => ({
           ...p,
           status: 'listening',
@@ -137,7 +144,11 @@ export default function App() {
         }));
       },
       (finalText) => {
-        if (isTTSActiveRef.current || !finalText.trim()) return;
+        if (!finalText.trim()) return;
+        if (isTTSActiveRef.current) {
+          voiceEngine.stop();
+          isTTSActiveRef.current = false;
+        }
 
         const newTurn: TranscriptTurn = {
           id: Math.random().toString(36).substring(2, 9),
@@ -384,6 +395,34 @@ export default function App() {
     };
   }, [handleSpeak, handleEmotionChange]);
 
+  const deriveBehavioralState = (): { bState: import('./types/persona').AgentBehavioralState; attention: number; action: string } => {
+    if (state.status === 'speaking') {
+      return { bState: 'RESPONDING', attention: 96, action: 'Communicating speech response...' };
+    }
+    if (state.status === 'listening') {
+      return { bState: 'LISTENING', attention: 92, action: 'Listening to human speech utterance...' };
+    }
+    if (state.status === 'agent_processing') {
+      return { bState: 'THINKING', attention: 72, action: 'Reasoning about intent & memory...' };
+    }
+    const lastTool = state.lastToolCall?.tool || '';
+    if (lastTool.includes('create_task')) {
+      return { bState: 'PLANNING', attention: 88, action: 'Creating actionable mission task...' };
+    }
+    if (lastTool.includes('update_task') || lastTool.includes('complete_task')) {
+      return { bState: 'EXECUTING', attention: 84, action: 'Adapting mission task state...' };
+    }
+    if (lastTool.includes('get_tasks')) {
+      return { bState: 'EVALUATING', attention: 80, action: 'Evaluating mission progress...' };
+    }
+    if (lastTool.includes('show_result')) {
+      return { bState: 'COMPLETED', attention: 95, action: 'Presenting structured result card...' };
+    }
+    return { bState: 'WAITING', attention: 90, action: 'Awaiting agent tool call or user input...' };
+  };
+
+  const bStateInfo = deriveBehavioralState();
+
   return (
     <div className="persona-app-container" data-theme={state.theme}>
       {/* DYNAMIC PERSONA BACKGROUND OVERLAY */}
@@ -598,6 +637,15 @@ export default function App() {
             </div>
 
             <div className="drawer-scroll-body">
+              {/* AGENT MISSION & TASKS SYSTEM */}
+              <AgentMissionPanel
+                behavioralState={bStateInfo.bState}
+                attentionPercentage={bStateInfo.attention}
+                behavioralAction={bStateInfo.action}
+                emotion={state.emotion}
+              />
+
+              <h2 className="panel-title-tag" style={{ marginTop: '12px' }}>WEBMCP TOOL REGISTRY (10)</h2>
               <div className="capabilities-stack">
                 <div className="capability-row">
                   <div className="cap-head">
@@ -647,6 +695,56 @@ export default function App() {
                     )}
                   </div>
                   <p className="cap-desc">Direct avatar gaze and eye contact.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">create_task()</span>
+                    {state.lastToolCall?.tool.includes('create_task') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Create actionable mission task item.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">update_task()</span>
+                    {state.lastToolCall?.tool.includes('update_task') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Adapt task status, priority, or details.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">get_tasks()</span>
+                    {state.lastToolCall?.tool.includes('get_tasks') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Retrieve current list of mission tasks.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">complete_task()</span>
+                    {state.lastToolCall?.tool.includes('complete_task') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Mark a specific task as completed.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">show_result()</span>
+                    {state.lastToolCall?.tool.includes('show_result') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Present outcome summary & result card.</p>
                 </div>
               </div>
 
