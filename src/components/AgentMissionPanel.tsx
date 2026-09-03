@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { CheckCircle2, Clock, XCircle, Circle, Target } from 'lucide-react';
 import { taskStore } from '../tasks/taskStore';
 import type { TaskItem, TaskPriority, TaskStatus } from '../tasks/taskTypes';
 import type { AgentBehavioralState, Emotion } from '../types/persona';
@@ -33,13 +34,13 @@ export const AgentMissionPanel: React.FC<AgentMissionPanelProps> = ({
   const getStatusIcon = (status: TaskStatus) => {
     switch (status) {
       case 'completed':
-        return <span className="status-icon icon-completed" title="Completed">✓</span>;
+        return <span className="status-icon icon-completed" title="Completed"><CheckCircle2 size={16} style={{ color: '#10b981' }} /></span>;
       case 'in_progress':
-        return <span className="status-icon icon-progress" title="In Progress">◉</span>;
+        return <span className="status-icon icon-progress" title="In Progress"><Clock size={16} style={{ color: '#f59e0b' }} /></span>;
       case 'cancelled':
-        return <span className="status-icon icon-cancelled" title="Cancelled">✕</span>;
+        return <span className="status-icon icon-cancelled" title="Cancelled"><XCircle size={16} style={{ color: '#ef4444' }} /></span>;
       default:
-        return <span className="status-icon icon-pending" title="Pending">○</span>;
+        return <span className="status-icon icon-pending" title="Pending"><Circle size={16} style={{ color: '#94a3b8' }} /></span>;
     }
   };
 
@@ -101,7 +102,7 @@ export const AgentMissionPanel: React.FC<AgentMissionPanelProps> = ({
 
         {tasks.length === 0 ? (
           <div className="mission-empty-state">
-            <span className="empty-icon">🎯</span>
+            <Target size={28} className="empty-icon" style={{ color: '#6366f1', marginBottom: '8px' }} />
             <p className="empty-text">
               No active mission tasks. The AI Agent can create and manage actionable tasks during your interaction.
             </p>
@@ -130,3 +131,4 @@ export const AgentMissionPanel: React.FC<AgentMissionPanelProps> = ({
     </div>
   );
 };
+

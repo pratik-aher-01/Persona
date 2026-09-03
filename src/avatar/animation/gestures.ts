@@ -17,7 +17,8 @@ export type GestureName =
   | 'hand_emphasis'
   | 'hands_together'
   | 'thoughtful_hand'
-  | 'welcoming_hand';
+  | 'welcoming_hand'
+  | 'shrug';
 
 export interface GestureOffsets {
   headPitch: number;
@@ -246,6 +247,60 @@ const GESTURE_LIBRARY: Record<Exclude<GestureName, 'idle'>, GestureConfig> = {
       { ratio: 0.35, leftUpperArmRoll: 0.30, rightUpperArmRoll: -0.30, leftLowerArmPitch: 0.25, rightLowerArmPitch: 0.25, spinePitch: 0.04 },
       { ratio: 0.35, leftUpperArmRoll: 0.30, rightUpperArmRoll: -0.30, leftLowerArmPitch: 0.25, rightLowerArmPitch: 0.25, spinePitch: 0.04 },
       { ratio: 0.30, leftUpperArmRoll: 0.0, rightUpperArmRoll: 0.0, leftLowerArmPitch: 0.0, rightLowerArmPitch: 0.0, spinePitch: 0.0 },
+    ],
+  },
+
+  // ── shrug ─────────────────────────────────────────────────────────────────
+  // Both arms rise slightly (symmetric), elbows bend forward, subtle head tilt.
+  //
+  // Coordinate conventions:
+  //   leftUpperArm  rest z = -1.20 → leftUpperArmRoll offset > 0  raises arm
+  //   rightUpperArm rest z = +1.20 → rightUpperArmRoll offset < 0 raises arm
+  //   Both LowerArm pitch > 0 → elbows flex forward (palms face user)
+  //   headRoll > 0 → head tilts to avatar's left (natural 'I dunno' tilt)
+  shrug: {
+    duration: 1.8,
+    priority: 2,
+    phases: [
+      // Phase 1 (30%): Lift both arms symmetrically — gentle shrug rise
+      { ratio: 0.30,
+        leftUpperArmRoll: 0.52,
+        leftUpperArmPitch: 0.05,
+        rightUpperArmRoll: -0.52,
+        rightUpperArmPitch: 0.05,
+        leftLowerArmPitch: 0.55,
+        rightLowerArmPitch: 0.55,
+        headRoll: 0.12,
+        headPitch: 0.04,
+        spinePitch: 0.03,
+        chestPitch: 0.02,
+      },
+      // Phase 2 (40%): Hold the shrug pose
+      { ratio: 0.40,
+        leftUpperArmRoll: 0.52,
+        leftUpperArmPitch: 0.05,
+        rightUpperArmRoll: -0.52,
+        rightUpperArmPitch: 0.05,
+        leftLowerArmPitch: 0.55,
+        rightLowerArmPitch: 0.55,
+        headRoll: 0.12,
+        headPitch: 0.04,
+        spinePitch: 0.03,
+        chestPitch: 0.02,
+      },
+      // Phase 3 (30%): Smoothly return to idle (all offsets → 0)
+      { ratio: 0.30,
+        leftUpperArmRoll: 0.0,
+        leftUpperArmPitch: 0.0,
+        rightUpperArmRoll: 0.0,
+        rightUpperArmPitch: 0.0,
+        leftLowerArmPitch: 0.0,
+        rightLowerArmPitch: 0.0,
+        headRoll: 0.0,
+        headPitch: 0.0,
+        spinePitch: 0.0,
+        chestPitch: 0.0,
+      },
     ],
   },
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react';
 import type { ResultObject } from '../tasks/taskTypes';
 import { taskStore } from '../tasks/taskStore';
 
@@ -23,13 +24,13 @@ export const ResultDisplayCard: React.FC<ResultDisplayCardProps> = ({ result }) 
   const getTypeIcon = (type: ResultObject['type']) => {
     switch (type) {
       case 'success':
-        return '✓';
+        return <CheckCircle2 size={16} />;
       case 'warning':
-        return '⚠️';
+        return <AlertTriangle size={16} />;
       case 'error':
-        return '✕';
+        return <XCircle size={16} />;
       default:
-        return 'ℹ️';
+        return <Info size={16} />;
     }
   };
 
@@ -48,8 +49,9 @@ export const ResultDisplayCard: React.FC<ResultDisplayCardProps> = ({ result }) 
           className="result-dismiss-btn"
           onClick={() => taskStore.dismissResult()}
           title="Dismiss Result"
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          ✕
+          <X size={14} />
         </button>
       </div>
 
@@ -74,3 +76,4 @@ export const ResultDisplayCard: React.FC<ResultDisplayCardProps> = ({ result }) 
     </div>
   );
 };
+

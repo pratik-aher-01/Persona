@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Wrench, X, Check } from 'lucide-react';
 import { mockAgentInstance } from './MockAgent';
 import type { AgentStatus } from './MockAgent';
 
@@ -44,9 +45,12 @@ export const MockAgentConsole: React.FC = () => {
             fontSize: '12px',
             fontWeight: 600,
             boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
           }}
         >
-          🛠️ DEVELOPMENT — MOCK AGENT
+          <Wrench size={14} /> DEVELOPMENT — MOCK AGENT
         </button>
       </div>
     );
@@ -85,14 +89,16 @@ export const MockAgentConsole: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8' }}>DEVELOPMENT — MOCK AGENT</span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <Wrench size={14} /> DEVELOPMENT — MOCK AGENT
+          </span>
           {getStatusBadge(agentState.status)}
         </div>
         <button
           onClick={() => setIsOpen(false)}
-          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px' }}
+          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
         >
-          ✕
+          <X size={16} />
         </button>
       </div>
 
@@ -262,7 +268,9 @@ export const MockAgentConsole: React.FC = () => {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: '#e2e8f0' }}>
-                        <span>[✓] WebMCP.{log.tool}()</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Check size={12} style={{ color: '#10b981' }} /> WebMCP.{log.tool}()
+                        </span>
                         <span style={{ color: '#64748b', fontSize: '10px' }}>{log.timestamp}</span>
                       </div>
                       <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '2px', wordBreak: 'break-word' }}>
@@ -275,6 +283,7 @@ export const MockAgentConsole: React.FC = () => {
             </div>
           </>
         )}
+
 
         {/* MEMORY TAB */}
         {activeTab === 'memory' && (

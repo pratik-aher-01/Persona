@@ -1,4 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { 
+  Moon, Sun, AlertTriangle, ChevronLeft, ChevronRight, Play, Circle, 
+  Sparkles, Check, Settings, Mic, MicOff, User, X, Smile, Volume2, 
+  Brain, Sliders 
+} from 'lucide-react';
 import { PersonaAvatar } from './avatar/PersonaAvatar';
 import type { VrmValidationReport } from './avatar/avatarTypes';
 import { ManualControls } from './components/ManualControls';
@@ -14,6 +19,7 @@ import { ConversationTranscript, type TranscriptTurn } from './components/Conver
 import { activeAgentAdapter } from './agent/ConversationAgent';
 import { AgentMissionPanel } from './components/AgentMissionPanel';
 import './App.css';
+
 
 export default function App() {
   const [state, setState] = useState<DemoState>({
@@ -450,8 +456,9 @@ export default function App() {
             className="btn-theme-toggle"
             onClick={toggleTheme}
             title="Toggle Light / Dark Mode"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <span className="theme-icon">{state.theme === 'light' ? '🌙' : '☀️'}</span>
+            <span className="theme-icon">{state.theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}</span>
             <span className="theme-text">{state.theme === 'light' ? 'DARK MODE' : 'LIGHT MODE'}</span>
           </button>
 
@@ -464,8 +471,8 @@ export default function App() {
       </header>
 
       {speechWarning && (
-        <div className="speech-warning-banner">
-          ⚠️ {speechWarning}
+        <div className="speech-warning-banner" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <AlertTriangle size={16} /> {speechWarning}
         </div>
       )}
 
@@ -487,7 +494,7 @@ export default function App() {
               title="Open Personas"
             >
               <span className="tab-label">PERSONAS</span>
-              <span className="tab-chevron">▶</span>
+              <span className="tab-chevron" style={{ display: 'inline-flex', alignItems: 'center' }}><ChevronRight size={14} /></span>
             </button>
           )}
 
@@ -500,8 +507,9 @@ export default function App() {
                 className="drawer-close-btn"
                 onClick={() => setIsPersonasDrawerOpen(false)}
                 title="Collapse Personas panel"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ◀
+                <ChevronLeft size={16} />
               </button>
             </div>
 
@@ -518,7 +526,7 @@ export default function App() {
                       onClick={() => handleSelectPersona(p)}
                     >
                       <div className="item-left">
-                        <span className="item-bullet">▶</span>
+                        <span className="item-bullet" style={{ display: 'inline-flex', alignItems: 'center' }}><Play size={10} fill="currentColor" /></span>
                         <div className="item-text-stack">
                           <span className="item-mode">{p.mode}</span>
                           {p.subtitle && <span className="item-sub">{p.subtitle}</span>}
@@ -542,7 +550,7 @@ export default function App() {
                       onClick={() => handleSelectPersona(p)}
                     >
                       <div className="item-left">
-                        <span className="item-bullet">○</span>
+                        <span className="item-bullet" style={{ display: 'inline-flex', alignItems: 'center' }}><Circle size={10} /></span>
                         <div className="item-text-stack">
                           <span className="item-mode">{p.mode}</span>
                           {p.subtitle && <span className="item-sub">{p.subtitle}</span>}
@@ -579,8 +587,8 @@ export default function App() {
                 <h2 className="coming-soon-hero-title">{selectedPersona.mode}</h2>
                 <div className="coming-soon-hero-subtitle">{selectedPersona.name}</div>
                 <p className="coming-soon-hero-desc">{selectedPersona.description}</p>
-                <div className="coming-soon-hero-card-footer">
-                  🎭 3D Avatar Model & Persona Mode Coming Soon
+                <div className="coming-soon-hero-card-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Sparkles size={16} /> 3D Avatar Model & Persona Mode Coming Soon
                 </div>
               </div>
             )}
@@ -617,7 +625,7 @@ export default function App() {
               onClick={toggleAgentDrawer}
               title="Open Agent Capabilities"
             >
-              <span className="tab-chevron">◀</span>
+              <span className="tab-chevron" style={{ display: 'inline-flex', alignItems: 'center' }}><ChevronLeft size={14} /></span>
               <span className="tab-label">TOOLS</span>
             </button>
           )}
@@ -631,8 +639,9 @@ export default function App() {
                 className="drawer-close-btn"
                 onClick={() => setIsAgentDrawerOpen(false)}
                 title="Collapse Agent Capabilities panel"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ▶
+                <ChevronRight size={16} />
               </button>
             </div>
 
@@ -651,7 +660,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">speak()</span>
                     {state.lastToolCall?.tool.includes('speak') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Make Persona speak with audio and emotion.</p>
@@ -661,7 +670,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">get_user_transcript()</span>
                     {state.lastToolCall?.tool.includes('get_user_transcript') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Read latest human speech utterance.</p>
@@ -671,17 +680,17 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">perform_gesture()</span>
                     {state.lastToolCall?.tool.includes('perform_gesture') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
-                  <p className="cap-desc">Trigger body gestures (nod, head tilt, lean, etc.).</p>
+                  <p className="cap-desc">Trigger body gestures (nod, head tilt, lean, wave hi, shrug, etc.).</p>
                 </div>
 
                 <div className="capability-row">
                   <div className="cap-head">
                     <span className="cap-name">set_expression()</span>
                     {state.lastToolCall?.tool.includes('set_expression') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Change facial expression and emotion.</p>
@@ -691,7 +700,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">set_attention()</span>
                     {state.lastToolCall?.tool.includes('set_attention') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Direct avatar gaze and eye contact.</p>
@@ -701,7 +710,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">create_task()</span>
                     {state.lastToolCall?.tool.includes('create_task') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Create actionable mission task item.</p>
@@ -711,7 +720,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">update_task()</span>
                     {state.lastToolCall?.tool.includes('update_task') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Adapt task status, priority, or details.</p>
@@ -721,7 +730,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">get_tasks()</span>
                     {state.lastToolCall?.tool.includes('get_tasks') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Retrieve current list of mission tasks.</p>
@@ -731,7 +740,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">complete_task()</span>
                     {state.lastToolCall?.tool.includes('complete_task') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Mark a specific task as completed.</p>
@@ -741,7 +750,7 @@ export default function App() {
                   <div className="cap-head">
                     <span className="cap-name">show_result()</span>
                     {state.lastToolCall?.tool.includes('show_result') && (
-                      <span className="cap-badge-called">✓ CALLED</span>
+                      <span className="cap-badge-called" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> CALLED</span>
                     )}
                   </div>
                   <p className="cap-desc">Present outcome summary & result card.</p>
@@ -776,8 +785,9 @@ export default function App() {
             className="btn-settings-toggle"
             onClick={() => setIsManualOpen(!isManualOpen)}
             title="Settings & Avatar Calibration"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <span className="gear-icon">⚙</span>
+            <span className="gear-icon" style={{ display: 'inline-flex', alignItems: 'center' }}><Settings size={14} /></span>
             <span className="settings-text">Settings & Tuning</span>
           </button>
 
@@ -787,15 +797,25 @@ export default function App() {
             className={`btn-mic-footer ${state.isListening ? 'is-active' : ''}`}
             onClick={handleToggleListening}
             title={state.isListening ? 'Stop listening' : 'Start speech recognition'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            {state.isListening ? '🔴 LISTENING...' : '🎙 START LISTENING'}
+            {state.isListening ? (
+              <>
+                <MicOff size={14} /> LISTENING...
+              </>
+            ) : (
+              <>
+                <Mic size={14} /> START LISTENING
+              </>
+            )}
           </button>
 
           {/* USER SPEECH TRANSCRIPT DISPLAY */}
           {(state.userTranscript || state.interimTranscript || state.isListening) && (
             <div className="footer-transcript-pill">
-              <span className="transcript-live-dot">
-                {state.isListening ? '🔴 LIVE:' : '🎙️ USER:'}
+              <span className="transcript-live-dot" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                {state.isListening ? <Mic size={12} className="animate-pulse" /> : <User size={12} />}
+                {state.isListening ? 'LIVE:' : 'USER:'}
               </span>
               <span className="transcript-text">
                 "{state.interimTranscript || state.userTranscript}"
@@ -809,8 +829,9 @@ export default function App() {
                   className="btn-clear-transcript-mini"
                   onClick={handleClearTranscript}
                   title="Clear transcript"
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  ×
+                  <X size={12} />
                 </button>
               )}
             </div>
@@ -820,22 +841,34 @@ export default function App() {
         <div className="footer-right-group">
           {/* EXPRESSION BADGE (MOVED FROM TOP TO BOTTOM FOOTER) */}
           <div className="footer-expression-pill">
-            <span className="expression-pill-icon">🎭</span>
+            <span className="expression-pill-icon" style={{ display: 'inline-flex', alignItems: 'center' }}><Smile size={14} /></span>
             <span className="expression-pill-label">EXPRESSION:</span>
             <span className="expression-pill-val">{state.emotion.toUpperCase()}</span>
           </div>
 
           <div className="footer-turn-status">
-            <span className={`live-status-dot status-${state.status}`}>
-              {state.status === 'speaking'
-                ? '● SPEAKING'
-                : state.status === 'listening'
-                ? '🔴 LISTENING'
-                : state.status === 'user_finished'
-                ? '✓ USER FINISHED'
-                : state.status === 'agent_processing'
-                ? '⚙ AGENT THINKING'
-                : '● IDLE'}
+            <span className={`live-status-dot status-${state.status}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              {state.status === 'speaking' ? (
+                <>
+                  <Volume2 size={12} /> SPEAKING
+                </>
+              ) : state.status === 'listening' ? (
+                <>
+                  <Mic size={12} /> LISTENING
+                </>
+              ) : state.status === 'user_finished' ? (
+                <>
+                  <Check size={12} /> USER FINISHED
+                </>
+              ) : state.status === 'agent_processing' ? (
+                <>
+                  <Brain size={12} className="animate-pulse" /> AGENT THINKING
+                </>
+              ) : (
+                <>
+                  <Sparkles size={12} /> IDLE
+                </>
+              )}
             </span>
           </div>
         </div>
@@ -846,8 +879,12 @@ export default function App() {
         <div className="mc-drawer-overlay" onClick={() => setIsManualOpen(false)}>
           <div className="mc-drawer" onClick={e => e.stopPropagation()}>
             <div className="mc-drawer-header">
-              <span>⚙ AVATAR TUNING & DEV CONTROLS</span>
-              <button type="button" className="mc-drawer-close" onClick={() => setIsManualOpen(false)}>×</button>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Sliders size={16} /> AVATAR TUNING & DEV CONTROLS
+              </span>
+              <button type="button" className="mc-drawer-close" onClick={() => setIsManualOpen(false)} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <X size={18} />
+              </button>
             </div>
             <div className="mc-drawer-body">
               <ManualControls
@@ -877,3 +914,4 @@ export default function App() {
     </div>
   );
 }
+

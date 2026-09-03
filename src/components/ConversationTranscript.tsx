@@ -1,4 +1,5 @@
 import React from 'react';
+import { User, Bot } from 'lucide-react';
 
 export interface TranscriptTurn {
   id: string;
@@ -54,7 +55,8 @@ export const ConversationTranscript: React.FC<ConversationTranscriptProps> = ({ 
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 600 }}>
-            <span style={{ color: turn.role === 'user' ? '#38bdf8' : '#10b981' }}>
+            <span style={{ color: turn.role === 'user' ? '#38bdf8' : '#10b981', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              {turn.role === 'user' ? <User size={11} /> : <Bot size={11} />}
               {turn.role === 'user' ? 'You' : 'Persona'}
             </span>
             <span style={{ color: '#64748b' }}>{turn.timestamp}</span>
@@ -65,3 +67,4 @@ export const ConversationTranscript: React.FC<ConversationTranscriptProps> = ({ 
     </div>
   );
 };
+

@@ -137,7 +137,7 @@ export async function registerWebMcpTools(
         properties: {
           gesture: {
             type: 'string',
-            enum: ['nod', 'shake_head', 'head_tilt', 'acknowledge', 'agree', 'disagree', 'thinking', 'lean_forward', 'lean_back'],
+            enum: ['nod', 'shake_head', 'head_tilt', 'acknowledge', 'agree', 'disagree', 'thinking', 'lean_forward', 'lean_back', 'shrug'],
             description: 'The body gesture for the virtual interviewer to perform.'
           }
         },
@@ -145,7 +145,7 @@ export async function registerWebMcpTools(
       },
       execute: (inputObject: Record<string, unknown>) => {
         const rawGesture = typeof inputObject.gesture === 'string' ? inputObject.gesture : String(inputObject.gesture || '');
-        const validGestures = ['nod', 'shake_head', 'head_tilt', 'acknowledge', 'agree', 'disagree', 'thinking', 'lean_forward', 'lean_back'];
+        const validGestures = ['nod', 'shake_head', 'head_tilt', 'acknowledge', 'agree', 'disagree', 'thinking', 'lean_forward', 'lean_back', 'shrug'];
 
         if (!validGestures.includes(rawGesture)) {
           return {

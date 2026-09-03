@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SessionState } from '../session/ConversationSession';
+import { AlertTriangle, Loader2, Volume2, Brain, Mic, Square } from 'lucide-react';
 
 interface ConversationControlsProps {
   sessionState: SessionState;
@@ -21,7 +22,8 @@ export const ConversationControls: React.FC<ConversationControlsProps> = ({
       {/* ERROR DISPLAY */}
       {micError && (
         <div className="conv-mic-error-banner">
-          ⚠️ {micError}
+          <AlertTriangle size={16} style={{ display: 'inline', marginRight: '6px' }} />
+          {micError}
         </div>
       )}
 
@@ -29,8 +31,9 @@ export const ConversationControls: React.FC<ConversationControlsProps> = ({
       {isSessionActive && (
         <div className="conv-session-status-badge">
           {sessionState === 'REQUESTING_MIC' && (
-            <span className="conv-status-text text-warning">
-              🟡 Requesting Microphone Access...
+            <span className="conv-status-text text-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Loader2 size={14} className="animate-spin" />
+              Requesting Microphone Access...
             </span>
           )}
 
@@ -44,14 +47,16 @@ export const ConversationControls: React.FC<ConversationControlsProps> = ({
           )}
 
           {sessionState === 'PROCESSING' && (
-            <span className="conv-status-text text-info">
-              • • • Thinking...
+            <span className="conv-status-text text-info" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Brain size={14} className="animate-pulse" />
+              Thinking...
             </span>
           )}
 
           {sessionState === 'SPEAKING' && (
-            <span className="conv-status-text text-success">
-              🔊 Persona Speaking...
+            <span className="conv-status-text text-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Volume2 size={14} />
+              Persona Speaking...
             </span>
           )}
         </div>
@@ -65,7 +70,9 @@ export const ConversationControls: React.FC<ConversationControlsProps> = ({
           aria-label="Start conversation"
           className="btn-start-conversation-corner"
         >
-          <span className="btn-conv-icon">🎙</span>
+          <span className="btn-conv-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <Mic size={18} />
+          </span>
           <span>Start Conversation</span>
         </button>
       ) : (
@@ -75,7 +82,9 @@ export const ConversationControls: React.FC<ConversationControlsProps> = ({
           aria-label="Stop conversation"
           className="btn-stop-conversation-corner"
         >
-          <span>⏹</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <Square size={14} fill="currentColor" />
+          </span>
           <span>Stop Conversation</span>
         </button>
       )}
@@ -88,4 +97,5 @@ export const ConversationControls: React.FC<ConversationControlsProps> = ({
     </div>
   );
 };
+
 

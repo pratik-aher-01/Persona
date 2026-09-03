@@ -496,6 +496,14 @@ export class PersonaAvatarRuntime implements AvatarControllerApi {
       'thinking',
       'lean_forward',
       'lean_back',
+      'subtle_hand_open',
+      'explain_hand',
+      'small_hand_raise',
+      'hand_emphasis',
+      'hands_together',
+      'thoughtful_hand',
+      'welcoming_hand',
+      'shrug',
     ];
     const name = validGestures.includes(gestureName as GestureName)
       ? (gestureName as GestureName)

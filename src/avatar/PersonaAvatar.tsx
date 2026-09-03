@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { PersonaAvatarRuntime } from './PersonaAvatarRuntime';
 import type { AvatarStatus, Emotion } from '../types/persona';
 import type { VrmValidationReport } from './avatarTypes';
@@ -175,7 +176,9 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
 
         {error && (
           <div className="vrm-error-overlay">
-            <span className="error-icon">⚠️</span>
+            <span className="error-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertTriangle size={24} />
+            </span>
             <div className="error-title">VRM ASSET NOT LOADED</div>
             <p className="error-desc">{error}</p>
             <div className="expected-path-note">

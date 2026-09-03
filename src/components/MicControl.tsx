@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle, Mic, MicOff } from 'lucide-react';
 
 interface MicControlProps {
   isListening: boolean;
@@ -33,14 +34,14 @@ export const MicControl: React.FC<MicControlProps> = ({
       </div>
 
       {!supported && (
-        <div className="mic-alert-warning">
-          ⚠️ Speech Recognition API unavailable.
+        <div className="mic-alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <AlertTriangle size={14} /> Speech Recognition API unavailable.
         </div>
       )}
 
       {micError && (
-        <div className="mic-alert-error">
-          ⚠️ {micError}
+        <div className="mic-alert-error" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <AlertTriangle size={14} /> {micError}
         </div>
       )}
 
@@ -50,10 +51,20 @@ export const MicControl: React.FC<MicControlProps> = ({
           className={`btn-mic-toggle ${isListening ? 'is-active' : ''}`}
           onClick={onToggleListening}
           disabled={!supported}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
         >
-          {isListening ? '🔴 LISTENING...' : '🎙 START LISTENING'}
+          {isListening ? (
+            <>
+              <MicOff size={16} /> LISTENING...
+            </>
+          ) : (
+            <>
+              <Mic size={16} /> START LISTENING
+            </>
+          )}
         </button>
       </div>
     </div>
   );
 };
+

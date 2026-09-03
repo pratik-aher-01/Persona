@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Sliders, Mic, Activity, FlaskConical, Copy, Check, RotateCcw, Play, Sparkles, Brain, MessageSquare } from 'lucide-react';
 import type { Emotion } from '../types/persona';
 import type { VrmValidationReport } from '../avatar/avatarTypes';
 import type { AvatarStatus } from '../types/persona';
@@ -91,13 +92,14 @@ const GESTURES = [
   'thinking',
   'lean_forward',
   'lean_back',
+  'shrug',
 ];
 
-const ACTIVITIES: { key: AvatarStatus; label: string }[] = [
-  { key: 'idle',             label: '💤  IDLE'      },
-  { key: 'listening',        label: '👂  LISTENING' },
-  { key: 'agent_processing', label: '🤔  THINKING'  },
-  { key: 'speaking',         label: '💬  SPEAKING'  },
+const ACTIVITIES: { key: AvatarStatus; label: string; icon: React.ReactNode }[] = [
+  { key: 'idle',             label: 'IDLE',       icon: <Sparkles size={14} /> },
+  { key: 'listening',        label: 'LISTENING',  icon: <Mic size={14} /> },
+  { key: 'agent_processing', label: 'THINKING',   icon: <Brain size={14} /> },
+  { key: 'speaking',         label: 'SPEAKING',   icon: <MessageSquare size={14} /> },
 ];
 
 const TUNING_STORAGE_KEY = 'persona_vrm_tuning';
@@ -365,7 +367,7 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
   };
 
   const handleResetDefaults = () => {
-    localStorage.removeItem(TUNING_STORAGE_KEY);
+    const defaultLit = DEFAULT_TUNING.lighting;
     const defaultCam = {
       fov: DEFAULT_TUNING.camera.fov,
       cameraZ: DEFAULT_TUNING.camera.z,
@@ -373,48 +375,46 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
       cameraLookYOffset: DEFAULT_TUNING.camera.cameraLookYOffset,
       cameraX: DEFAULT_TUNING.camera.x,
     };
-    const defaultLit = {
-      ambient: DEFAULT_TUNING.lighting.ambientIntensity,
-      key: DEFAULT_TUNING.lighting.keyIntensity,
-      fill: DEFAULT_TUNING.lighting.fillIntensity,
-      rim: DEFAULT_TUNING.lighting.rimIntensity,
-      keyX: DEFAULT_TUNING.lighting.keyX,
-      keyY: DEFAULT_TUNING.lighting.keyY,
-      keyZ: DEFAULT_TUNING.lighting.keyZ,
-      exposure: DEFAULT_TUNING.lighting.exposure,
-    };
-    const defaultAvt = {
-      scale: DEFAULT_TUNING.avatar.scale,
-      x: DEFAULT_TUNING.avatar.x,
-      y: DEFAULT_TUNING.avatar.y,
-      z: DEFAULT_TUNING.avatar.z,
-    };
+    const defaultAvt = DEFAULT_TUNING.avatar;
 
-    setCam(defaultCam);
-    setLit(defaultLit);
-    setAvt(defaultAvt);
-
-    cameraApi?.set({
-      fov: defaultCam.fov,
-      cameraZ: defaultCam.cameraZ,
-      cameraYOffset: defaultCam.cameraYOffset,
-      cameraLookYOffset: defaultCam.cameraLookYOffset,
-      cameraX: defaultCam.cameraX,
+    setLit({
+      key: defaultLit.keyIntensity,
+      fill: defaultLit.fillIntensity,
+      rim: defaultLit.rimIntensity,
+      ambient: defaultLit.ambientIntensity,
+      exposure: defaultLit.exposure,
+      keyX: defaultLit.keyX,
+      keyY: defaultLit.keyY,
+      keyZ: defaultLit.keyZ,
     });
+    setCam(defaultCam);
+    setAvt({
+      scale: defaultAvt.scale,
+      x: defaultAvt.x,
+      y: defaultAvt.y,
+      z: defaultAvt.z,
+    });
+
+    try {
+      localStorage.removeItem(TUNING_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+
+    cameraApi?.set(defaultCam);
     lightingApi?.set(defaultLit);
     avatarApi?.set(defaultAvt);
   };
 
-  const TABS: { key: typeof activeTab; label: string }[] = [
-    { key: 'scene',    label: '🎛 AVATAR TUNING' },
-    { key: 'speak',    label: '🎤 SPEAK' },
-    { key: 'activity', label: '🎭 ACTIVITY' },
-    { key: 'debug',    label: '🔬 DEBUG' },
+  const TABS: { key: typeof activeTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'scene',    label: 'AVATAR TUNING', icon: <Sliders size={14} /> },
+    { key: 'speak',    label: 'SPEAK',         icon: <Mic size={14} /> },
+    { key: 'activity', label: 'ACTIVITY',      icon: <Activity size={14} /> },
+    { key: 'debug',    label: 'DEBUG',         icon: <FlaskConical size={14} /> },
   ];
 
   return (
     <div className="mc-root">
-      {/* Tab bar */}
       <div className="mc-tabs">
         {TABS.map(t => (
           <button
@@ -422,14 +422,15 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
             type="button"
             className={`mc-tab-btn ${activeTab === t.key ? 'is-active' : ''}`}
             onClick={() => setActiveTab(t.key)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            {t.label}
+            {t.icon}
+            <span>{t.label}</span>
           </button>
         ))}
       </div>
 
       <div className="mc-body">
-        {/* ── SCENE (LIVE AVATAR CALIBRATION) ─────────────────────────── */}
         {activeTab === 'scene' && (
           <div className="mc-section-stack">
             <div className="mc-section">
@@ -455,9 +456,9 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
             <div className="mc-section">
               <span className="mc-section-label">CAMERA</span>
               <BrutalSlider label="Field of View (FOV)"   value={cam.fov}               min={10}  max={60}  step={0.5}  onChange={v => updateCam('fov', v)} />
-              <BrutalSlider label="Camera Distance (Z)"   value={cam.cameraZ}           min={0.4} max={3.5} step={0.01} onChange={v => updateCam('cameraZ', v)} />
+              <BrutalSlider label="Camera Distance (Z)"   value={cam.cameraZ ?? 1.6}           min={0.4} max={3.5} step={0.01} onChange={v => updateCam('cameraZ', v)} />
               <BrutalSlider label="Camera Position X"     value={cam.cameraX ?? 0}      min={-1.5} max={1.5} step={0.01} onChange={v => updateCam('cameraX', v)} />
-              <BrutalSlider label="Camera Height Offset Y" value={cam.cameraYOffset}   min={-1.0} max={1.0} step={0.01} onChange={v => updateCam('cameraYOffset', v)} />
+              <BrutalSlider label="Camera Height Offset Y" value={cam.cameraYOffset ?? 0.08}   min={-1.0} max={1.0} step={0.01} onChange={v => updateCam('cameraYOffset', v)} />
             </div>
 
             <div className="mc-divider" />
@@ -477,15 +478,19 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
                 type="button"
                 className={`mc-btn-primary mc-copy-btn ${copied ? 'is-copied' : ''}`}
                 onClick={handleCopyConfig}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                {copied ? '✓ COPIED TUNING JSON' : '⧉ COPY TUNING VALUES'}
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copied ? 'COPIED TUNING JSON' : 'COPY TUNING VALUES'}</span>
               </button>
               <button
                 type="button"
                 className="mc-btn-outline"
                 onClick={handleResetDefaults}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                ↺ RESET DEFAULTS
+                <RotateCcw size={14} />
+                <span>RESET DEFAULTS</span>
               </button>
             </div>
             <p className="mc-hint" style={{ marginTop: '8px' }}>
@@ -494,7 +499,6 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
           </div>
         )}
 
-        {/* ── SPEAK ──────────────────────────────────────────────── */}
         {activeTab === 'speak' && (
           <div className="mc-section-stack">
             <div className="mc-section">
@@ -527,11 +531,11 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
             </div>
 
             <div className="mc-action-row">
-              <button type="button" className="mc-btn-primary" onClick={handleSpeak}>
-                ▶ TRIGGER SPEAK()
+              <button type="button" className="mc-btn-primary" onClick={handleSpeak} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Play size={14} /> TRIGGER SPEAK()
               </button>
-              <button type="button" className="mc-btn-outline" onClick={() => { onResetIdle(); }}>
-                ↺ RESET
+              <button type="button" className="mc-btn-outline" onClick={() => { onResetIdle(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <RotateCcw size={14} /> RESET
               </button>
             </div>
 
@@ -554,7 +558,6 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
           </div>
         )}
 
-        {/* ── ACTIVITY ───────────────────────────────────────────── */}
         {activeTab === 'activity' && (
           <div className="mc-section-stack">
             <div className="mc-section">
@@ -573,8 +576,10 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
                         if (a.key === 'idle') onResetIdle();
                       }
                     }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    {a.label}
+                    {a.icon}
+                    <span>{a.label}</span>
                     {currentStatus === a.key && <span className="mc-active-dot" />}
                   </button>
                 ))}
@@ -599,7 +604,6 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
           </div>
         )}
 
-        {/* ── DEBUG ──────────────────────────────────────────────── */}
         {activeTab === 'debug' && (
           <div className="mc-section-stack">
             <div className="mc-section">
@@ -609,10 +613,10 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
                   {[
                     ['Version',    `${vrmReport.vrmVersion} — ${vrmReport.vrmMetaName}`],
                     ['Author',     vrmReport.vrmMetaAuthor],
-                    ['Humanoid',   vrmReport.humanoidAvailable   ? '✓ Available' : '❌ Missing'],
-                    ['Expressions',vrmReport.expressionManagerAvailable ? '✓ Available' : '❌ Missing'],
-                    ['LookAt',     vrmReport.lookAtAvailable     ? '✓ Available' : '❌ Missing'],
-                    ['SpringBones',vrmReport.springBonesAvailable? '✓ Available' : '❌ Missing'],
+                    ['Humanoid',   vrmReport.humanoidAvailable   ? '✓ Available' : '✕ Missing'],
+                    ['Expressions',vrmReport.expressionManagerAvailable ? '✓ Available' : '✕ Missing'],
+                    ['LookAt',     vrmReport.lookAtAvailable     ? '✓ Available' : '✕ Missing'],
+                    ['SpringBones',vrmReport.springBonesAvailable? '✓ Available' : '✕ Missing'],
                     [`Preset Exp (${vrmReport.presetExpressions.length})`, vrmReport.presetExpressions.join(', ') || '—'],
                     ...(vrmReport.rawMorphTargetsCount ? [['Raw Morph Targets', `${vrmReport.rawMorphTargetsCount} targets on face mesh`]] : []),
                     ...(vrmReport.customExpressions.length > 0
@@ -628,9 +632,6 @@ export const ManualControls: React.FC<ManualControlsProps> = ({
               ) : (
                 <p className="mc-hint">VRM not yet loaded...</p>
               )}
-            </div>
-            <div className="mc-info-box">
-              ✅ All controls work directly without WebMCP or ChatGPT.
             </div>
           </div>
         )}
