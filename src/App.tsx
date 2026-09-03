@@ -618,6 +618,36 @@ export default function App() {
                   </div>
                   <p className="cap-desc">Read latest human speech utterance.</p>
                 </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">perform_gesture()</span>
+                    {state.lastToolCall?.tool.includes('perform_gesture') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Trigger body gestures (nod, head tilt, lean, etc.).</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">set_expression()</span>
+                    {state.lastToolCall?.tool.includes('set_expression') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Change facial expression and emotion.</p>
+                </div>
+
+                <div className="capability-row">
+                  <div className="cap-head">
+                    <span className="cap-name">set_attention()</span>
+                    {state.lastToolCall?.tool.includes('set_attention') && (
+                      <span className="cap-badge-called">✓ CALLED</span>
+                    )}
+                  </div>
+                  <p className="cap-desc">Direct avatar gaze and eye contact.</p>
+                </div>
               </div>
 
               <div className="panel-card-mini agent-activity-block">
